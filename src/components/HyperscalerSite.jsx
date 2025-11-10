@@ -291,7 +291,7 @@ function HyperscalerSite({ site, result, gpuPrices, updateSite, toggleSite, togg
             />
           </div>
 
-          <h4 style={{ marginTop: '1.5rem', marginBottom: '1rem', color: '#495057' }}>Contract Gap Closed to Nebius</h4>
+          <h4 style={{ marginTop: '1.5rem', marginBottom: '1rem', color: '#495057' }}>Contract Gap Closer to Nebius</h4>
 
           <div className="input-row">
             <label>Enable Contract Gap Calculation</label>
@@ -319,7 +319,7 @@ function HyperscalerSite({ site, result, gpuPrices, updateSite, toggleSite, togg
                 onBlur={(e) => handleNumberBlur('improvedContractsPercentage', e.target.value, 0)}
               />
               <div style={{ fontSize: '0.875rem', color: '#6c757d', marginTop: '0.25rem', lineHeight: '1.4' }}>
-                The first IREN-MSFT Contract's Revenue was ~73.35% of NBIS-MSFT Contract's Revenue. We expect subsequent contracts to be better than ~73.35% because IREN's credibility and uptime track record will enable them to negotiate a better topline. The total cost of GPUs, hardware, DC and all operation cost is reflected in the items subtracted from Base Revenue and any additional revenue from negotiations is profit. This percentage should be between 73.35% and 100%.
+                The first IREN-MSFT Contract's Revenue was ~73.35% of NBIS-MSFT Contract's Revenue. We expect subsequent contracts to be better than ~73.35% because IREN's credibility and/or uptime track record will enable them to negotiate a better topline. The total cost of GPUs, hardware, DC and all operation cost is reflected in the items subtracted from Base Revenue and any additional revenue is profit. This percentage should be between 73.35% and 100%.
               </div>
             </div>
           </div>

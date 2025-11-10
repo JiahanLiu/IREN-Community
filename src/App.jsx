@@ -19,7 +19,7 @@ function App() {
   const [useDirectSharesInput, setUseDirectSharesInput] = useState(false);
   const [directShares, setDirectShares] = useState(365.3); // in millions
   const [currentShares, setCurrentShares] = useState(281); // in millions
-  const [dilutionPercentage, setDilutionPercentage] = useState(30);
+  const [dilutionPercentage, setDilutionPercentage] = useState(40);
   const [peRatio, setPeRatio] = useState(25);
   const [shareParamsOpen, setShareParamsOpen] = useState(true);
   const [gpuPricesOpen, setGpuPricesOpen] = useState(false);
@@ -73,7 +73,7 @@ function App() {
       enabled: true,
       accordionOpen: true,
       data: {
-        sizeValue: 200,
+        sizeValue: 300,
         sizeUnit: 'MW',
         pue: 1.5,
         revenueMode: 'direct',
@@ -266,8 +266,8 @@ function App() {
     const revenue = itLoad * data.revenuePerMW;
     steps.push(`Revenue: ${itLoad.toFixed(2)} MW × $${data.revenuePerMW}M/MW-yr = $${revenue.toFixed(2)}M/yr`);
 
-    const dcCost = totalLoadMW * data.dcCostPerMW;
-    steps.push(`DC Cost: ${totalLoadMW.toFixed(2)} MW × $${data.dcCostPerMW}M/MW = $${dcCost.toFixed(2)}M`);
+    const dcCost = itLoad * data.dcCostPerMW;
+    steps.push(`DC Cost: ${itLoad.toFixed(2)} MW × $${data.dcCostPerMW}M/MW = $${dcCost.toFixed(2)}M`);
 
     const dcDepreciation = dcCost / data.dcLifetime;
     steps.push(`DC Depreciation: $${dcCost.toFixed(2)}M / ${data.dcLifetime} yrs = $${dcDepreciation.toFixed(2)}M/yr`);
@@ -319,9 +319,11 @@ function App() {
     // DC depreciation
     const sizeMW = data.sizeUnit === 'GW' ? data.sizeValue * 1000 : data.sizeValue;
     const itLoad = sizeMW / (data.pue || 1);
-    const dcCost = sizeMW * data.dcCostPerMW;
+    steps.push(`IT Load: ${sizeMW.toFixed(2)} MW / ${data.pue || 1} = ${itLoad.toFixed(2)} MW`);
+
+    const dcCost = itLoad * data.dcCostPerMW;
     const dcDepreciation = dcCost / data.dcLifetime;
-    steps.push(`DC Depreciation: (${sizeMW.toFixed(2)} MW × $${data.dcCostPerMW}M/MW) / ${data.dcLifetime} yrs = $${dcDepreciation.toFixed(2)}M/yr`);
+    steps.push(`DC Depreciation: (${itLoad.toFixed(2)} MW × $${data.dcCostPerMW}M/MW) / ${data.dcLifetime} yrs = $${dcDepreciation.toFixed(2)}M/yr`);
 
     // Interest calculation - Amortized Monthly Payments
     const prepayment = revenue * (data.prepaymentPercent / 100);
@@ -375,10 +377,10 @@ function App() {
 
     let netProfit = baseNetProfit;
 
-    // Contract Gap to Nebius (only if enabled)
+    // Contract Gap Closer to Nebius (only if enabled)
     if (data.contractGapEnabled) {
       steps.push(''); // Empty line for spacing
-      steps.push('--- Contract Gap to Nebius ---');
+      steps.push('--- Contract Gap Closer to Nebius ---');
 
       // Get GPU count (from either direct or nebius mode)
       const gpuCount = data.revenueMode === 'direct' ? (data.directGpuCount || 0) : (data.nebiusGpuCount || 0);
