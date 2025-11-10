@@ -61,25 +61,106 @@ function IRENCloudSite({ site, result, gpuPrices, updateSite, toggleSite, toggle
 
       {isOpen && (
         <div className="accordion-content">
-          <div className="input-row">
-            <label>Base Revenue ($M)</label>
-            <input
-              type="number"
-              value={site.data.toplineRevenue}
-              onChange={(e) => handleNumberChange('toplineRevenue', e.target.value)}
-              onBlur={(e) => handleNumberBlur('toplineRevenue', e.target.value)}
-            />
-          </div>
+          {!site.enabled ? (
+            <div className="disabled-message">
+              Site Disabled. Please Enable to Input Parameters.
+            </div>
+          ) : (
+            <>
+              <div className="input-row">
+                <label>Load Input Mode</label>
+                <div className="radio-group">
+                  <label>
+                    <input
+                      type="radio"
+                      checked={site.data.loadInputMode === 'total'}
+                      onChange={() => update('loadInputMode', 'total')}
+                    />
+                    Total Load + PUE
+                  </label>
+                  <label>
+                    <input
+                      type="radio"
+                      checked={site.data.loadInputMode === 'direct'}
+                      onChange={() => update('loadInputMode', 'direct')}
+                    />
+                    DC IT Load
+                  </label>
+                </div>
+              </div>
 
-          <div className="input-row">
-            <label>Project EBITDA Margin (%)</label>
-            <input
-              type="number"
-              value={site.data.ebitdaMargin}
-              onChange={(e) => handleNumberChange('ebitdaMargin', e.target.value)}
-              onBlur={(e) => handleNumberBlur('ebitdaMargin', e.target.value)}
-            />
-          </div>
+              {site.data.loadInputMode === 'total' ? (
+                <>
+                  <div className="input-row">
+                    <label>Site Size/Total Load</label>
+                    <div className="input-with-unit">
+                      <input
+                        type="number"
+                        value={site.data.sizeValue}
+                        onChange={(e) => handleNumberChange('sizeValue', e.target.value)}
+                        onBlur={(e) => handleNumberBlur('sizeValue', e.target.value)}
+                      />
+                      <select
+                        value={site.data.sizeUnit}
+                        onChange={(e) => update('sizeUnit', e.target.value)}
+                      >
+                        <option value="MW">MW</option>
+                        <option value="GW">GW</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="input-row">
+                    <label>PUE</label>
+                    <input
+                      type="number"
+                      step="0.1"
+                      value={site.data.pue}
+                      onChange={(e) => handleNumberChange('pue', e.target.value)}
+                      onBlur={(e) => handleNumberBlur('pue', e.target.value, 1)}
+                    />
+                  </div>
+                </>
+              ) : (
+                <div className="input-row">
+                  <label>IT Load</label>
+                  <div className="input-with-unit">
+                    <input
+                      type="number"
+                      value={site.data.itLoad ?? 0}
+                      onChange={(e) => handleNumberChange('itLoad', e.target.value)}
+                      onBlur={(e) => handleNumberBlur('itLoad', e.target.value)}
+                    />
+                    <select
+                      value={site.data.itLoadUnit || 'MW'}
+                      onChange={(e) => update('itLoadUnit', e.target.value)}
+                    >
+                      <option value="MW">MW</option>
+                      <option value="GW">GW</option>
+                    </select>
+                  </div>
+                </div>
+              )}
+
+              <div className="input-row">
+                <label>Base Revenue ($M)</label>
+                <input
+                  type="number"
+                  value={site.data.toplineRevenue}
+                  onChange={(e) => handleNumberChange('toplineRevenue', e.target.value)}
+                  onBlur={(e) => handleNumberBlur('toplineRevenue', e.target.value)}
+                />
+              </div>
+
+              <div className="input-row">
+                <label>Project EBITDA Margin (%)</label>
+                <input
+                  type="number"
+                  value={site.data.ebitdaMargin}
+                  onChange={(e) => handleNumberChange('ebitdaMargin', e.target.value)}
+                  onBlur={(e) => handleNumberBlur('ebitdaMargin', e.target.value)}
+                />
+              </div>
 
           <div className="gpu-inputs">
             <h4>GPU Counts</h4>
@@ -162,15 +243,26 @@ function IRENCloudSite({ site, result, gpuPrices, updateSite, toggleSite, toggle
           </div>
 
           {site.data.dcType === 'retrofit' ? (
-            <div className="input-row">
-              <label>Retrofit Capex ($M)</label>
-              <input
-                type="number"
-                value={site.data.retrofitCapex}
-                onChange={(e) => handleNumberChange('retrofitCapex', e.target.value)}
-                onBlur={(e) => handleNumberBlur('retrofitCapex', e.target.value)}
-              />
-            </div>
+            <>
+              <div className="input-row">
+                <label>Retrofit Capex per MW ($M)</label>
+                <input
+                  type="number"
+                  value={site.data.retrofitCapexPerMW ?? 0}
+                  onChange={(e) => handleNumberChange('retrofitCapexPerMW', e.target.value)}
+                  onBlur={(e) => handleNumberBlur('retrofitCapexPerMW', e.target.value)}
+                />
+              </div>
+              <div className="input-row">
+                <label>DC Useful Lifetime (years)</label>
+                <input
+                  type="number"
+                  value={site.data.dcLifetime ?? 20}
+                  onChange={(e) => handleNumberChange('dcLifetime', e.target.value)}
+                  onBlur={(e) => handleNumberBlur('dcLifetime', e.target.value, 1)}
+                />
+              </div>
+            </>
           ) : (
             <>
               <div className="input-row">
@@ -192,61 +284,63 @@ function IRENCloudSite({ site, result, gpuPrices, updateSite, toggleSite, toggle
               </div>
 
               <div className="input-row">
-                <label>Site Size (MW)</label>
-                  <input
-                    type="number"
-                    value={site.data.siteSize}
-                    onChange={(e) => handleNumberChange('siteSize', e.target.value)}
-                    onBlur={(e) => handleNumberBlur('siteSize', e.target.value)}
-                  />
-              </div>
-
-              <div className="input-row">
-                <label>PUE</label>
-                  <input
-                    type="number"
-                    step="0.1"
-                    value={site.data.pue}
-                    onChange={(e) => handleNumberChange('pue', e.target.value)}
-                    onBlur={(e) => handleNumberBlur('pue', e.target.value, 1)}
-                  />
-              </div>
-
-              <div className="input-row">
                 <label>Cost per MW IT Load ($M/MW)</label>
-                  <input
-                    type="number"
-                    value={site.data.dcCostPerMW || getDCCostPerMW()}
-                    onChange={(e) => handleNumberChange('dcCostPerMW', e.target.value)}
-                    onBlur={(e) => handleNumberBlur('dcCostPerMW', e.target.value)}
-                  />
+                <input
+                  type="number"
+                  value={site.data.dcCostPerMW || getDCCostPerMW()}
+                  onChange={(e) => handleNumberChange('dcCostPerMW', e.target.value)}
+                  onBlur={(e) => handleNumberBlur('dcCostPerMW', e.target.value)}
+                />
               </div>
 
               <div className="input-row">
-                <label>DC Lifetime (years)</label>
-                  <input
-                    type="number"
-                    value={site.data.dcLifetime}
-                    onChange={(e) => handleNumberChange('dcLifetime', e.target.value)}
-                    onBlur={(e) => handleNumberBlur('dcLifetime', e.target.value, 1)}
-                  />
+                <label>DC Useful Lifetime (years)</label>
+                <input
+                  type="number"
+                  value={site.data.dcLifetime ?? 20}
+                  onChange={(e) => handleNumberChange('dcLifetime', e.target.value)}
+                  onBlur={(e) => handleNumberBlur('dcLifetime', e.target.value, 1)}
+                />
               </div>
             </>
           )}
 
           <div className="input-row">
-            <label>Interest Cost ($M/yr)</label>
+            <label>Percentage of GPU/Hardware Financed as Debt (%)</label>
             <input
               type="number"
-              value={site.data.interestCost}
-              onChange={(e) => handleNumberChange('interestCost', e.target.value)}
-              onBlur={(e) => handleNumberBlur('interestCost', e.target.value)}
+              value={site.data.debtPercent ?? 80}
+              onChange={(e) => handleNumberChange('debtPercent', e.target.value)}
+              onBlur={(e) => handleNumberBlur('debtPercent', e.target.value, 0)}
+            />
+          </div>
+
+          <div className="input-row">
+            <label>Interest Rate (%)</label>
+            <input
+              type="number"
+              step="0.1"
+              value={site.data.interestRate ?? 7}
+              onChange={(e) => handleNumberChange('interestRate', e.target.value)}
+              onBlur={(e) => handleNumberBlur('interestRate', e.target.value, 0)}
+            />
+          </div>
+
+          <div className="input-row">
+            <label>Loan Term (years)</label>
+            <input
+              type="number"
+              value={site.data.debtYears ?? 5}
+              onChange={(e) => handleNumberChange('debtYears', e.target.value)}
+              onBlur={(e) => handleNumberBlur('debtYears', e.target.value, 1)}
             />
           </div>
 
           <div className="calc-steps">
             {result.steps.map((step, i) => <div key={i}>{step}</div>)}
           </div>
+            </>
+          )}
         </div>
       )}
     </div>
