@@ -235,7 +235,30 @@ function IRENCloudSite({ site, result, gpuPrices, updateSite, toggleSite, toggle
             <label>Data Center Type</label>
             <select
               value={site.data.dcType}
-              onChange={(e) => update('dcType', e.target.value)}
+              onChange={(e) => {
+                const dcType = e.target.value;
+                if (dcType === 'new') {
+                  // Initialize newDcType and dcCostPerMW when switching to new DC
+                  const newDcType = site.data.newDcType || 't3-liquid';
+                  let dcCostPerMW = 15; // default for t3-liquid
+                  // Only use existing dcCostPerMW if it's a valid non-zero value
+                  if (site.data.dcCostPerMW && site.data.dcCostPerMW > 0) {
+                    dcCostPerMW = site.data.dcCostPerMW;
+                  } else {
+                    // Set based on newDcType
+                    if (newDcType === 't2-liquid') dcCostPerMW = 8;
+                    else if (newDcType === 't2-air') dcCostPerMW = 2;
+                    else if (newDcType === 't3-liquid') dcCostPerMW = 15;
+                  }
+                  updateSite(site.id, {
+                    dcType: 'new',
+                    newDcType: newDcType,
+                    dcCostPerMW: dcCostPerMW
+                  });
+                } else {
+                  update('dcType', dcType);
+                }
+              }}
             >
               <option value="retrofit">Retrofit DC</option>
               <option value="new">New DC</option>
@@ -271,15 +294,22 @@ function IRENCloudSite({ site, result, gpuPrices, updateSite, toggleSite, toggle
                   value={site.data.newDcType || 't3-liquid'}
                   onChange={(e) => {
                     const type = e.target.value;
-                    let cost = 15;
-                    if (type === 't2-liquid') cost = 8;
-                    if (type === 't2-air') cost = 2;
-                    updateSite(site.id, { newDcType: type, dcCostPerMW: cost });
+                    let updates = { newDcType: type };
+                    if (type === 't3-liquid') {
+                      updates.dcCostPerMW = 15;
+                    } else if (type === 't2-liquid') {
+                      updates.dcCostPerMW = 8;
+                    } else if (type === 't2-air') {
+                      updates.dcCostPerMW = 2;
+                    }
+                    // For 'custom', don't update dcCostPerMW - keep existing value
+                    updateSite(site.id, updates);
                   }}
                 >
                   <option value="t3-liquid">T3 Liquid Cooled</option>
                   <option value="t2-liquid">T2 Liquid Cooled</option>
                   <option value="t2-air">T2 Air Cooled</option>
+                  <option value="custom">Custom DC</option>
                 </select>
               </div>
 
@@ -287,7 +317,7 @@ function IRENCloudSite({ site, result, gpuPrices, updateSite, toggleSite, toggle
                 <label>Cost per MW IT Load ($M/MW)</label>
                 <input
                   type="number"
-                  value={site.data.dcCostPerMW || getDCCostPerMW()}
+                  value={site.data.dcCostPerMW ?? getDCCostPerMW()}
                   onChange={(e) => handleNumberChange('dcCostPerMW', e.target.value)}
                   onBlur={(e) => handleNumberBlur('dcCostPerMW', e.target.value)}
                 />
