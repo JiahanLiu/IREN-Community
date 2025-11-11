@@ -4,6 +4,7 @@ import GPUPrices from './components/GPUPrices';
 import ColocationSite from './components/ColocationSite';
 import HyperscalerSite from './components/HyperscalerSite';
 import IRENCloudSite from './components/IRENCloudSite';
+import packageJson from '../package.json';
 
 function App() {
   // GPU Prices
@@ -968,6 +969,11 @@ function App() {
               </div>
             );
           })}
+        </div>
+
+        {/* Version Footer */}
+        <div style={{ textAlign: 'center', padding: '2rem 0', fontSize: '0.85rem', color: '#666' }}>
+          Version {packageJson.version.split('.').slice(0, 2).join('.')}
         </div>
       </div>
     </div>
