@@ -19,8 +19,8 @@ function App() {
   const [useDirectSharesInput, setUseDirectSharesInput] = useState(false);
   const [directShares, setDirectShares] = useState(365.3); // in millions
   const [currentShares, setCurrentShares] = useState(281); // in millions
-  const [dilutionPercentage, setDilutionPercentage] = useState(40);
-  const [peRatio, setPeRatio] = useState(25);
+  const [dilutionPercentage, setDilutionPercentage] = useState(30);
+  const [peRatio, setPeRatio] = useState(30);
   const [corporateTaxRate, setCorporateTaxRate] = useState(21); // percentage
   const [taxAbatementRate, setTaxAbatementRate] = useState(85); // percentage
   const [sgaExpense, setSgaExpense] = useState(138); // in millions
@@ -534,17 +534,21 @@ function App() {
       const newRevenue = gpuCountProratedNebius * (improvedPercentage / 100);
       steps.push(`New Negotiated Topline: $${gpuCountProratedNebius.toFixed(2)}M × ${improvedPercentage}% = $${newRevenue.toFixed(2)}M`);
 
-      // Additional Profit
-      const additionalProfit = newRevenue - revenue;
-      steps.push(`Additional Profit: New Negotiated Topline - Base Revenue = $${newRevenue.toFixed(2)}M - $${revenue.toFixed(2)}M = $${additionalProfit.toFixed(2)}M`);
+      // Additional Profit (5yrs)
+      const additionalProfit5yrs = newRevenue - revenue;
+      steps.push(`Additional Profit (5yrs): New Negotiated Topline - Base Revenue = $${newRevenue.toFixed(2)}M - $${revenue.toFixed(2)}M = $${additionalProfit5yrs.toFixed(2)}M`);
+
+      // Additional Profit (annual)
+      const additionalProfit = additionalProfit5yrs / 5;
+      steps.push(`Additional Profit: Additional Profit (5yrs) / 5 = $${additionalProfit5yrs.toFixed(2)}M / 5 = $${additionalProfit.toFixed(2)}M/yr`);
 
       // Net Profit (Base Net Profit + Additional Profit)
       netProfit = baseNetProfit + additionalProfit;
-      steps.push(`Earnings before Tax, SG&A: Base Earnings before Tax, SG&A + Additional Profit = $${baseNetProfit.toFixed(2)}M/yr + $${additionalProfit.toFixed(2)}M = $${netProfit.toFixed(2)}M/yr`);
+      steps.push(`Earnings before Tax, SG&A: Base Earnings before Tax, SG&A + Additional Profit = $${baseNetProfit.toFixed(2)}M/yr + $${additionalProfit.toFixed(2)}M/yr = $${netProfit.toFixed(2)}M/yr`);
 
       // Update total revenue to include additional profit
-      totalRevenue = revenue + additionalProfit;
-      steps.push(`Revenue: Base Revenue + Additional Profit = $${revenue.toFixed(2)}M + $${additionalProfit.toFixed(2)}M = $${totalRevenue.toFixed(2)}M`);
+      totalRevenue = revenue + additionalProfit5yrs;
+      steps.push(`Revenue: Base Revenue + Additional Profit (5yrs) = $${revenue.toFixed(2)}M + $${additionalProfit5yrs.toFixed(2)}M = $${totalRevenue.toFixed(2)}M`);
     }
 
     // Calculate annual revenue (divide total contract revenue by contract years)
