@@ -307,11 +307,24 @@
 }
 
 .net-profit-display {
-  font-size: 1.1rem;
-  font-weight: 600;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
   margin-top: 0.5rem;
   margin-right: 2rem;
   text-align: right;
+}
+
+.net-profit-display .label {
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: #666;
+  margin-bottom: 0.25rem;
+}
+
+.net-profit-display .value {
+  font-size: 1.1rem;
+  font-weight: 600;
 }
 
 .site-wrapper.disabled {

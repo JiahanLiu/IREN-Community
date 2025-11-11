@@ -48,7 +48,12 @@ function ColocationSite({ site, result, updateSite, toggleSite, toggleAccordion,
           </div>
         </div>
         <div className="net-profit-display">
-          Net Profit: ${result.netProfit.toFixed(2)}M/yr
+          <div className="label">Annual Revenue</div>
+          <div className="value">${(result.revenue / 1000).toFixed(2)}B/yr</div>
+        </div>
+        <div className="net-profit-display">
+          <div className="label">Earnings before Tax, SG&A</div>
+          <div className="value">${result.netProfit.toFixed(2)}M/yr</div>
         </div>
         <span className="accordion-icon">{isOpen ? '−' : '+'}</span>
       </div>

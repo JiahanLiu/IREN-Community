@@ -363,7 +363,7 @@ function App() {
 
   // Calculate net profit for each site
   const calculateSiteNetProfit = (site) => {
-    if (!site.enabled) return { netProfit: 0, steps: [] };
+    if (!site.enabled) return { netProfit: 0, revenue: 0, steps: [] };
 
     if (site.type === 'Colocation') {
       return calculateColocationProfit(site.data);
@@ -372,7 +372,7 @@ function App() {
     } else if (site.type === 'IREN Cloud') {
       return calculateIRENCloudProfit(site.data, gpuPrices);
     }
-    return { netProfit: 0, steps: [] };
+    return { netProfit: 0, revenue: 0, steps: [] };
   };
 
   const calculateColocationProfit = (data) => {
@@ -401,9 +401,9 @@ function App() {
     steps.push(`DC Depreciation: $${dcCost.toFixed(2)}M / ${(data.dcLifetime || 1)} yrs = $${dcDepreciation.toFixed(2)}M/yr`);
 
     const netProfit = revenue - dcDepreciation;
-    steps.push(`Net Profit: $${revenue.toFixed(2)}M - $${dcDepreciation.toFixed(2)}M = $${netProfit.toFixed(2)}M/yr`);
+    steps.push(`Earnings before Tax, SG&A: $${revenue.toFixed(2)}M - $${dcDepreciation.toFixed(2)}M = $${netProfit.toFixed(2)}M/yr`);
 
-    return { netProfit, steps };
+    return { netProfit, revenue, steps };
   };
 
   const calculateHyperscalerProfit = (data) => {
@@ -413,11 +413,11 @@ function App() {
     let revenue = 0;
     if (data.revenueMode === 'direct') {
       revenue = data.toplineRevenue || 0;
-      steps.push(`Revenue: $${revenue.toFixed(2)}M`);
+      steps.push(`Base Revenue: $${revenue.toFixed(2)}M`);
     } else if (data.revenueMode === 'nebius') {
       const irenMsftBase = 9700; // $9.7B
       revenue = ((data.nebiusGpuCount || 0) / 76) * irenMsftBase;
-      steps.push(`Revenue: (${(data.nebiusGpuCount || 0)}k / 76k) × $${irenMsftBase}M = $${revenue.toFixed(2)}M`);
+      steps.push(`Base Revenue: (${(data.nebiusGpuCount || 0)}k / 76k) × $${irenMsftBase}M = $${revenue.toFixed(2)}M`);
     }
 
     const ebitda = revenue * ((data.ebitdaMargin || 0) / 100);
@@ -509,9 +509,10 @@ function App() {
     steps.push(`GPU Residual Value/yr: $${residualValue.toFixed(2)}M / ${data.contractYears} yrs = $${residualValuePerYear.toFixed(2)}M/yr`);
 
     const baseNetProfit = ebitdaPerYear - gpuDepreciation - dcDepreciation - interestPerYear + residualValuePerYear;
-    steps.push(`Base Net Profit: $${ebitdaPerYear.toFixed(2)}M - $${gpuDepreciation.toFixed(2)}M - $${dcDepreciation.toFixed(2)}M - $${interestPerYear.toFixed(2)}M + $${residualValuePerYear.toFixed(2)}M = $${baseNetProfit.toFixed(2)}M/yr`);
+    steps.push(`Base Earnings before Tax, SG&A: $${ebitdaPerYear.toFixed(2)}M - $${gpuDepreciation.toFixed(2)}M - $${dcDepreciation.toFixed(2)}M - $${interestPerYear.toFixed(2)}M + $${residualValuePerYear.toFixed(2)}M = $${baseNetProfit.toFixed(2)}M/yr`);
 
     let netProfit = baseNetProfit;
+    let totalRevenue = revenue; // Track total revenue (base + additional if applicable)
 
     // Contract Gap Closer to Nebius (only if enabled)
     if (data.contractGapEnabled) {
@@ -526,27 +527,30 @@ function App() {
       const gpuCountProratedNebius = (gpuCount / 100) * nebiusBase;
       steps.push(`GPU Count Prorated Nebius Topline: (${gpuCount}k / 100k) × $${nebiusBase}M = $${gpuCountProratedNebius.toFixed(2)}M`);
 
-      // Base Contract Percentage as Percentage of Nebius
-      const baseContractPercentage = gpuCountProratedNebius > 0 ? (revenue / gpuCountProratedNebius) * 100 : 0;
-      steps.push(`Base Contract Percentage as Percentage of Nebius: ($${revenue.toFixed(2)}M / $${gpuCountProratedNebius.toFixed(2)}M) × 100 = ${baseContractPercentage.toFixed(2)}%`);
-
       // Improved Contracts Percentage (user input)
       const improvedPercentage = data.improvedContractsPercentage || 0;
 
       // New Negotiated Topline
-      const newRevenue = (gpuCount / 100) * nebiusBase * (improvedPercentage / 100);
-      steps.push(`New Negotiated Topline: (${gpuCount}k / 100k) × $${nebiusBase}M × ${improvedPercentage}% = $${newRevenue.toFixed(2)}M`);
+      const newRevenue = gpuCountProratedNebius * (improvedPercentage / 100);
+      steps.push(`New Negotiated Topline: $${gpuCountProratedNebius.toFixed(2)}M × ${improvedPercentage}% = $${newRevenue.toFixed(2)}M`);
 
       // Additional Profit
       const additionalProfit = newRevenue - revenue;
-      steps.push(`Additional Profit: $${newRevenue.toFixed(2)}M - $${revenue.toFixed(2)}M = $${additionalProfit.toFixed(2)}M`);
+      steps.push(`Additional Profit: New Negotiated Topline - Base Revenue = $${newRevenue.toFixed(2)}M - $${revenue.toFixed(2)}M = $${additionalProfit.toFixed(2)}M`);
 
       // Net Profit (Base Net Profit + Additional Profit)
       netProfit = baseNetProfit + additionalProfit;
-      steps.push(`Net Profit: $${baseNetProfit.toFixed(2)}M/yr + $${additionalProfit.toFixed(2)}M = $${netProfit.toFixed(2)}M/yr`);
+      steps.push(`Earnings before Tax, SG&A: Base Earnings before Tax, SG&A + Additional Profit = $${baseNetProfit.toFixed(2)}M/yr + $${additionalProfit.toFixed(2)}M = $${netProfit.toFixed(2)}M/yr`);
+
+      // Update total revenue to include additional profit
+      totalRevenue = revenue + additionalProfit;
+      steps.push(`Revenue: Base Revenue + Additional Profit = $${revenue.toFixed(2)}M + $${additionalProfit.toFixed(2)}M = $${totalRevenue.toFixed(2)}M`);
     }
 
-    return { netProfit, steps };
+    // Calculate annual revenue (divide total contract revenue by contract years)
+    const annualRevenue = totalRevenue / (data.contractYears || 1);
+
+    return { netProfit, revenue: annualRevenue, steps };
   };
 
   const calculateIRENCloudProfit = (data, prices) => {
@@ -644,34 +648,15 @@ function App() {
     steps.push(`GPU Residual Value/yr: $${residualValue.toFixed(2)}M / ${(data.gpuUsefulLife || 1)} yrs = $${residualValuePerYear.toFixed(2)}M/yr`);
 
     const netProfit = ebitda - gpuDepreciation - dcDepreciation - averageInterestPerYear + residualValuePerYear;
-    steps.push(`Net Profit: $${ebitda.toFixed(2)}M - $${gpuDepreciation.toFixed(2)}M - $${dcDepreciation.toFixed(2)}M - $${averageInterestPerYear.toFixed(2)}M + $${residualValuePerYear.toFixed(2)}M = $${netProfit.toFixed(2)}M/yr`);
+    steps.push(`Earnings before Tax, SG&A: $${ebitda.toFixed(2)}M - $${gpuDepreciation.toFixed(2)}M - $${dcDepreciation.toFixed(2)}M - $${averageInterestPerYear.toFixed(2)}M + $${residualValuePerYear.toFixed(2)}M = $${netProfit.toFixed(2)}M/yr`);
 
-    return { netProfit, steps };
+    return { netProfit, revenue, steps };
   };
 
   // Calculate total annual revenue
   const totalAnnualRevenue = sites.reduce((sum, site) => {
-    if (!site.enabled) return sum;
-
-    if (site.type === 'Colocation') {
-      const totalLoadValue = site.data.totalLoadValue || 0;
-      const totalLoadMW = site.data.totalLoadUnit === 'GW' ? totalLoadValue * 1000 : totalLoadValue;
-      const itLoad = totalLoadMW / (site.data.pue || 1);
-      const revenue = itLoad * (site.data.revenuePerMW || 0);
-      return sum + revenue;
-    } else if (site.type === 'Hyperscaler Tenant') {
-      let revenue = 0;
-      if (site.data.revenueMode === 'direct') {
-        revenue = site.data.toplineRevenue || 0;
-      } else if (site.data.revenueMode === 'nebius') {
-        const irenMsftBase = 9700;
-        revenue = ((site.data.nebiusGpuCount || 0) / 76) * irenMsftBase;
-      }
-      return sum + revenue;
-    } else if (site.type === 'IREN Cloud') {
-      return sum + (site.data.toplineRevenue || 0);
-    }
-    return sum;
+    const result = calculateSiteNetProfit(site);
+    return sum + result.revenue;
   }, 0);
 
   // Calculate total net profits
@@ -741,21 +726,40 @@ function App() {
               <div className="result-value">{formatValue(marketCap)}</div>
             </div>
             <div className="result-item">
-              <label>Fully Diluted Shares</label>
-              <div className="result-value">{formatShares(fullyDilutedShares)}</div>
-            </div>
-            <div className="result-item">
               <label>Annual Revenue</label>
               <div className="result-value">{formatValue(totalAnnualRevenue, '$', '/yr')}</div>
             </div>
             <div className="result-item">
-              <label>Net Profit from Sites</label>
+              <label>Earnings before Tax, SG&A</label>
               <div className="result-value">{formatValue(totalNetProfit, '$', '/yr')}</div>
             </div>
           </div>
 
           <div className="calc-steps">
-            <div>Pre-tax Net Profits = Net Profit from Sites - SG&A = {formatValue(totalNetProfit)} - {formatValue(sgaExpense)} = {formatValue(preTaxNetProfits)}</div>
+            <div style={{ fontWeight: 'bold', marginBottom: '0.5rem' }}>Annual Revenue Split:</div>
+            {sites.filter(site => site.enabled).map(site => {
+              const result = calculateSiteNetProfit(site);
+              return (
+                <div key={site.id}>
+                  {site.name}: {formatValue(result.revenue)}/yr
+                </div>
+              );
+            })}
+            <div style={{ marginTop: '0.5rem' }}>Total Annual Revenue = {formatValue(totalAnnualRevenue)}/yr</div>
+
+            <div style={{ fontWeight: 'bold', marginTop: '1rem', marginBottom: '0.5rem' }}>Earnings before Tax, SG&A Split:</div>
+            {sites.filter(site => site.enabled).map(site => {
+              const result = calculateSiteNetProfit(site);
+              return (
+                <div key={site.id}>
+                  {site.name}: {formatValue(result.netProfit)}/yr
+                </div>
+              );
+            })}
+            <div style={{ marginTop: '0.5rem' }}>Total Earnings before Tax, SG&A = {formatValue(totalNetProfit)}/yr</div>
+
+            <div style={{ fontWeight: 'bold', marginTop: '1rem', marginBottom: '0.5rem' }}>Net Profit and Share Price Calculations:</div>
+            <div>Pre-tax Net Profits = Earnings before Tax, SG&A - SG&A = {formatValue(totalNetProfit)} - {formatValue(sgaExpense)} = {formatValue(preTaxNetProfits)}</div>
             <div>Corporate Tax = Pre-tax Net Profits × Corporate Tax Rate = {formatValue(preTaxNetProfits)} × {corporateTaxRate}% = {formatValue(corporateTax)}</div>
             <div>Tax Abatement and Tax Loss Realization = Corporate Tax × Tax Abatement and Tax Loss Realization Rate = {formatValue(corporateTax)} × {taxAbatementRate}% = {formatValue(taxAbatement)}</div>
             <div>Taxes = Corporate Tax - Tax Abatement and Tax Loss Realization = {formatValue(corporateTax)} - {formatValue(taxAbatement)} = {formatValue(taxes)}</div>
