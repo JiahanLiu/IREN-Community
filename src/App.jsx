@@ -208,6 +208,87 @@ function App() {
     setSites(sites.map(site => ({ ...site, accordionOpen: false })));
   };
 
+  const downloadCSV = () => {
+    const data = {
+      gpuPrices,
+      useDirectSharesInput,
+      directShares,
+      currentShares,
+      dilutionPercentage,
+      peRatio,
+      corporateTaxRate,
+      taxAbatementRate,
+      sgaExpense,
+      sites: sites.map(site => ({
+        id: site.id,
+        name: site.name,
+        type: site.type,
+        enabled: site.enabled,
+        data: site.data
+      }))
+    };
+
+    const csvContent = JSON.stringify(data, null, 2);
+    const blob = new Blob([csvContent], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'iren-financials-config.json';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  const uploadCSV = (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const data = JSON.parse(e.target.result);
+
+        // Update GPU prices if present
+        if (data.gpuPrices) {
+          setGpuPrices({
+            hyperscaleBulkGB300: data.gpuPrices.hyperscaleBulkGB300 ?? gpuPrices.hyperscaleBulkGB300,
+            gb300: data.gpuPrices.gb300 ?? gpuPrices.gb300,
+            b200: data.gpuPrices.b200 ?? gpuPrices.b200,
+            b300: data.gpuPrices.b300 ?? gpuPrices.b300,
+            mi350x: data.gpuPrices.mi350x ?? gpuPrices.mi350x,
+          });
+        }
+
+        // Update share calculation parameters if present
+        if (data.useDirectSharesInput !== undefined) setUseDirectSharesInput(data.useDirectSharesInput);
+        if (data.directShares !== undefined) setDirectShares(data.directShares);
+        if (data.currentShares !== undefined) setCurrentShares(data.currentShares);
+        if (data.dilutionPercentage !== undefined) setDilutionPercentage(data.dilutionPercentage);
+        if (data.peRatio !== undefined) setPeRatio(data.peRatio);
+        if (data.corporateTaxRate !== undefined) setCorporateTaxRate(data.corporateTaxRate);
+        if (data.taxAbatementRate !== undefined) setTaxAbatementRate(data.taxAbatementRate);
+        if (data.sgaExpense !== undefined) setSgaExpense(data.sgaExpense);
+
+        // Update sites if present
+        if (data.sites && Array.isArray(data.sites)) {
+          setSites(data.sites.map(site => ({
+            ...site,
+            accordionOpen: site.accordionOpen ?? true,
+            data: { ...site.data }
+          })));
+        }
+
+        alert('Configuration loaded successfully!');
+      } catch (error) {
+        alert('Error loading configuration file. Please check the file format.');
+        console.error('Upload error:', error);
+      }
+    };
+    reader.readAsText(file);
+    event.target.value = ''; // Reset file input
+  };
+
   const deleteSite = (id) => {
     setSites(sites.filter(site => site.id !== id));
   };
@@ -303,20 +384,21 @@ function App() {
       itLoad = data.itLoadUnit === 'GW' ? itLoadValue * 1000 : itLoadValue;
       steps.push(`IT Load: ${itLoad.toFixed(2)} MW`);
     } else {
-      const totalLoadMW = data.totalLoadUnit === 'GW' ? data.totalLoadValue * 1000 : data.totalLoadValue;
+      const totalLoadValue = data.totalLoadValue || 0;
+      const totalLoadMW = data.totalLoadUnit === 'GW' ? totalLoadValue * 1000 : totalLoadValue;
       steps.push(`Total Load: ${totalLoadMW.toFixed(2)} MW`);
-      itLoad = totalLoadMW / data.pue;
-      steps.push(`IT Load: ${totalLoadMW.toFixed(2)} MW / ${data.pue} = ${itLoad.toFixed(2)} MW`);
+      itLoad = totalLoadMW / (data.pue || 1);
+      steps.push(`IT Load: ${totalLoadMW.toFixed(2)} MW / ${(data.pue || 1)} = ${itLoad.toFixed(2)} MW`);
     }
 
-    const revenue = itLoad * data.revenuePerMW;
-    steps.push(`Revenue: ${itLoad.toFixed(2)} MW × $${data.revenuePerMW}M/MW-yr = $${revenue.toFixed(2)}M/yr`);
+    const revenue = itLoad * (data.revenuePerMW || 0);
+    steps.push(`Revenue: ${itLoad.toFixed(2)} MW × $${(data.revenuePerMW || 0)}M/MW-yr = $${revenue.toFixed(2)}M/yr`);
 
-    const dcCost = itLoad * data.dcCostPerMW;
-    steps.push(`DC Cost: ${itLoad.toFixed(2)} MW × $${data.dcCostPerMW}M/MW = $${dcCost.toFixed(2)}M`);
+    const dcCost = itLoad * (data.dcCostPerMW || 0);
+    steps.push(`DC Cost: ${itLoad.toFixed(2)} MW × $${(data.dcCostPerMW || 0)}M/MW = $${dcCost.toFixed(2)}M`);
 
-    const dcDepreciation = dcCost / data.dcLifetime;
-    steps.push(`DC Depreciation: $${dcCost.toFixed(2)}M / ${data.dcLifetime} yrs = $${dcDepreciation.toFixed(2)}M/yr`);
+    const dcDepreciation = dcCost / (data.dcLifetime || 1);
+    steps.push(`DC Depreciation: $${dcCost.toFixed(2)}M / ${(data.dcLifetime || 1)} yrs = $${dcDepreciation.toFixed(2)}M/yr`);
 
     const netProfit = revenue - dcDepreciation;
     steps.push(`Net Profit: $${revenue.toFixed(2)}M - $${dcDepreciation.toFixed(2)}M = $${netProfit.toFixed(2)}M/yr`);
@@ -330,24 +412,24 @@ function App() {
     // Calculate revenue
     let revenue = 0;
     if (data.revenueMode === 'direct') {
-      revenue = data.toplineRevenue;
+      revenue = data.toplineRevenue || 0;
       steps.push(`Revenue: $${revenue.toFixed(2)}M`);
     } else if (data.revenueMode === 'nebius') {
       const irenMsftBase = 9700; // $9.7B
-      revenue = (data.nebiusGpuCount / 76) * irenMsftBase;
-      steps.push(`Revenue: (${data.nebiusGpuCount}k / 76k) × $${irenMsftBase}M = $${revenue.toFixed(2)}M`);
+      revenue = ((data.nebiusGpuCount || 0) / 76) * irenMsftBase;
+      steps.push(`Revenue: (${(data.nebiusGpuCount || 0)}k / 76k) × $${irenMsftBase}M = $${revenue.toFixed(2)}M`);
     }
 
-    const ebitda = revenue * (data.ebitdaMargin / 100);
-    steps.push(`EBITDA: $${revenue.toFixed(2)}M × ${data.ebitdaMargin}% = $${ebitda.toFixed(2)}M`);
+    const ebitda = revenue * ((data.ebitdaMargin || 0) / 100);
+    steps.push(`EBITDA: $${revenue.toFixed(2)}M × ${(data.ebitdaMargin || 0)}% = $${ebitda.toFixed(2)}M`);
 
-    const ebitdaPerYear = ebitda / data.contractYears;
-    steps.push(`EBITDA/yr: $${ebitda.toFixed(2)}M / ${data.contractYears} yrs = $${ebitdaPerYear.toFixed(2)}M/yr`);
+    const ebitdaPerYear = ebitda / (data.contractYears || 1);
+    steps.push(`EBITDA/yr: $${ebitda.toFixed(2)}M / ${(data.contractYears || 1)} yrs = $${ebitdaPerYear.toFixed(2)}M/yr`);
 
     // GPU depreciation
     let totalHardwareCost = 0;
     if (data.hardwareMode === 'total') {
-      totalHardwareCost = data.totalHardwareCost;
+      totalHardwareCost = data.totalHardwareCost || 0;
     } else if (data.hardwareMode === 'gpus') {
       const gpus = data.gpus || {};
       totalHardwareCost =
@@ -359,8 +441,8 @@ function App() {
       steps.push(`Total Hardware Cost: $${totalHardwareCost.toFixed(2)}M`);
     }
 
-    const gpuDepreciation = totalHardwareCost / data.contractYears;
-    steps.push(`GPU Depreciation: $${totalHardwareCost.toFixed(2)}M / ${data.contractYears} yrs = $${gpuDepreciation.toFixed(2)}M/yr`);
+    const gpuDepreciation = totalHardwareCost / (data.contractYears || 1);
+    steps.push(`GPU Depreciation: $${totalHardwareCost.toFixed(2)}M / ${(data.contractYears || 1)} yrs = $${gpuDepreciation.toFixed(2)}M/yr`);
 
     // DC depreciation
     let itLoad;
@@ -369,26 +451,27 @@ function App() {
       itLoad = data.itLoadUnit === 'GW' ? itLoadValue * 1000 : itLoadValue;
       steps.push(`IT Load: ${itLoad.toFixed(2)} MW`);
     } else {
-      const sizeMW = data.sizeUnit === 'GW' ? data.sizeValue * 1000 : data.sizeValue;
+      const sizeValue = data.sizeValue || 0;
+      const sizeMW = data.sizeUnit === 'GW' ? sizeValue * 1000 : sizeValue;
       itLoad = sizeMW / (data.pue || 1);
-      steps.push(`IT Load: ${sizeMW.toFixed(2)} MW / ${data.pue || 1} = ${itLoad.toFixed(2)} MW`);
+      steps.push(`IT Load: ${sizeMW.toFixed(2)} MW / ${(data.pue || 1)} = ${itLoad.toFixed(2)} MW`);
     }
 
-    const dcCost = itLoad * data.dcCostPerMW;
-    const dcDepreciation = dcCost / data.dcLifetime;
-    steps.push(`DC Depreciation: (${itLoad.toFixed(2)} MW × $${data.dcCostPerMW}M/MW) / ${data.dcLifetime} yrs = $${dcDepreciation.toFixed(2)}M/yr`);
+    const dcCost = itLoad * (data.dcCostPerMW || 0);
+    const dcDepreciation = dcCost / (data.dcLifetime || 1);
+    steps.push(`DC Depreciation: (${itLoad.toFixed(2)} MW × $${(data.dcCostPerMW || 0)}M/MW) / ${(data.dcLifetime || 1)} yrs = $${dcDepreciation.toFixed(2)}M/yr`);
 
     // Interest calculation - Amortized Monthly Payments
-    const prepayment = revenue * (data.prepaymentPercent / 100);
-    steps.push(`Prepayment: $${revenue.toFixed(2)}M × ${data.prepaymentPercent}% = $${prepayment.toFixed(2)}M`);
+    const prepayment = revenue * ((data.prepaymentPercent || 0) / 100);
+    steps.push(`Prepayment: $${revenue.toFixed(2)}M × ${(data.prepaymentPercent || 0)}% = $${prepayment.toFixed(2)}M`);
 
     const initialDebt = totalHardwareCost - prepayment;
     steps.push(`Initial Debt: $${totalHardwareCost.toFixed(2)}M - $${prepayment.toFixed(2)}M = $${initialDebt.toFixed(2)}M`);
 
     // Calculate monthly payment using amortization formula
-    const annualRate = data.interestRate / 100;
+    const annualRate = (data.interestRate || 0) / 100;
     const monthlyRate = annualRate / 12;
-    const totalMonths = data.debtYears * 12;
+    const totalMonths = (data.debtYears || 1) * 12;
     const monthlyPayment = initialDebt * (monthlyRate * Math.pow(1 + monthlyRate, totalMonths)) / (Math.pow(1 + monthlyRate, totalMonths) - 1);
     const annualPayment = monthlyPayment * 12;
     steps.push(`Monthly Payment (Amortized): $${monthlyPayment.toFixed(2)}M/month`);
@@ -397,7 +480,7 @@ function App() {
     // Calculate interest for each year (aggregated from monthly)
     let remainingBalance = initialDebt;
     let totalInterest = 0;
-    for (let year = 1; year <= data.debtYears; year++) {
+    for (let year = 1; year <= (data.debtYears || 1); year++) {
       let yearInterest = 0;
       let yearPrincipal = 0;
       const startBalance = remainingBalance;
@@ -469,11 +552,11 @@ function App() {
   const calculateIRENCloudProfit = (data, prices) => {
     const steps = [];
 
-    const revenue = data.toplineRevenue;
+    const revenue = data.toplineRevenue || 0;
     steps.push(`Revenue: $${revenue.toFixed(2)}M`);
 
-    const ebitda = revenue * (data.ebitdaMargin / 100);
-    steps.push(`EBITDA: $${revenue.toFixed(2)}M × ${data.ebitdaMargin}% = $${ebitda.toFixed(2)}M`);
+    const ebitda = revenue * ((data.ebitdaMargin || 0) / 100);
+    steps.push(`EBITDA: $${revenue.toFixed(2)}M × ${(data.ebitdaMargin || 0)}% = $${ebitda.toFixed(2)}M`);
 
     // GPU depreciation
     const gpus = data.gpus || {};
@@ -485,8 +568,8 @@ function App() {
       (gpus.hyperscaleBulkGB300 || 0) * prices.hyperscaleBulkGB300 / 1000000;
     steps.push(`Total GPU Cost: $${totalGpuCost.toFixed(2)}M`);
 
-    const gpuDepreciation = totalGpuCost / data.gpuUsefulLife;
-    steps.push(`GPU Depreciation: $${totalGpuCost.toFixed(2)}M / ${data.gpuUsefulLife} yrs = $${gpuDepreciation.toFixed(2)}M/yr`);
+    const gpuDepreciation = totalGpuCost / (data.gpuUsefulLife || 1);
+    steps.push(`GPU Depreciation: $${totalGpuCost.toFixed(2)}M / ${(data.gpuUsefulLife || 1)} yrs = $${gpuDepreciation.toFixed(2)}M/yr`);
 
     // Calculate IT Load based on input mode
     let itLoad;
@@ -495,10 +578,11 @@ function App() {
       itLoad = data.itLoadUnit === 'GW' ? itLoadValue * 1000 : itLoadValue;
       steps.push(`IT Load: ${itLoad.toFixed(2)} MW`);
     } else {
-      const sizeMW = data.sizeUnit === 'GW' ? data.sizeValue * 1000 : data.sizeValue;
+      const sizeValue = data.sizeValue || 0;
+      const sizeMW = data.sizeUnit === 'GW' ? sizeValue * 1000 : sizeValue;
       itLoad = sizeMW / (data.pue || 1);
       steps.push(`Total Load: ${sizeMW.toFixed(2)} MW`);
-      steps.push(`IT Load: ${sizeMW.toFixed(2)} MW / ${data.pue || 1} = ${itLoad.toFixed(2)} MW`);
+      steps.push(`IT Load: ${sizeMW.toFixed(2)} MW / ${(data.pue || 1)} = ${itLoad.toFixed(2)} MW`);
     }
 
     // DC depreciation
@@ -506,24 +590,24 @@ function App() {
     if (data.dcType === 'retrofit') {
       const retrofitCapex = itLoad * (data.retrofitCapexPerMW || 0);
       dcDepreciation = retrofitCapex / (data.dcLifetime || 20);
-      steps.push(`Retrofit Capex: ${itLoad.toFixed(2)} MW × $${data.retrofitCapexPerMW || 0}M/MW = $${retrofitCapex.toFixed(2)}M`);
-      steps.push(`DC Depreciation (Retrofit): $${retrofitCapex.toFixed(2)}M / ${data.dcLifetime || 20} yrs = $${dcDepreciation.toFixed(2)}M/yr`);
+      steps.push(`Retrofit Capex: ${itLoad.toFixed(2)} MW × $${(data.retrofitCapexPerMW || 0)}M/MW = $${retrofitCapex.toFixed(2)}M`);
+      steps.push(`DC Depreciation (Retrofit): $${retrofitCapex.toFixed(2)}M / ${(data.dcLifetime || 20)} yrs = $${dcDepreciation.toFixed(2)}M/yr`);
     } else {
       const dcCostPerMW = data.dcCostPerMW || 0;
       const dcCost = itLoad * dcCostPerMW;
-      dcDepreciation = dcCost / data.dcLifetime;
+      dcDepreciation = dcCost / (data.dcLifetime || 1);
       steps.push(`DC Cost: ${itLoad.toFixed(2)} MW × $${dcCostPerMW}M/MW = $${dcCost.toFixed(2)}M`);
-      steps.push(`DC Depreciation: $${dcCost.toFixed(2)}M / ${data.dcLifetime} yrs = $${dcDepreciation.toFixed(2)}M/yr`);
+      steps.push(`DC Depreciation: $${dcCost.toFixed(2)}M / ${(data.dcLifetime || 1)} yrs = $${dcDepreciation.toFixed(2)}M/yr`);
     }
 
     // Interest calculation - Amortized Monthly Payments
-    const initialDebt = totalGpuCost * (data.debtPercent / 100);
-    steps.push(`Initial Debt: $${totalGpuCost.toFixed(2)}M × ${data.debtPercent}% = $${initialDebt.toFixed(2)}M`);
+    const initialDebt = totalGpuCost * ((data.debtPercent || 0) / 100);
+    steps.push(`Initial Debt: $${totalGpuCost.toFixed(2)}M × ${(data.debtPercent || 0)}% = $${initialDebt.toFixed(2)}M`);
 
     // Calculate monthly payment using amortization formula
-    const annualRate = data.interestRate / 100;
+    const annualRate = (data.interestRate || 0) / 100;
     const monthlyRate = annualRate / 12;
-    const totalMonths = data.debtYears * 12;
+    const totalMonths = (data.debtYears || 1) * 12;
     const monthlyPayment = initialDebt * (monthlyRate * Math.pow(1 + monthlyRate, totalMonths)) / (Math.pow(1 + monthlyRate, totalMonths) - 1);
     const annualPayment = monthlyPayment * 12;
     steps.push(`Monthly Payment (Amortized): $${monthlyPayment.toFixed(2)}M/month`);
@@ -532,7 +616,7 @@ function App() {
     // Calculate interest for each year (aggregated from monthly)
     let remainingBalance = initialDebt;
     let totalInterest = 0;
-    for (let year = 1; year <= data.debtYears; year++) {
+    for (let year = 1; year <= (data.debtYears || 1); year++) {
       let yearInterest = 0;
       let yearPrincipal = 0;
       const startBalance = remainingBalance;
@@ -550,14 +634,14 @@ function App() {
       steps.push(`Year ${year}: Interest = $${yearInterest.toFixed(2)}M, Principal = $${yearPrincipal.toFixed(2)}M, Ending Balance = $${remainingBalance.toFixed(2)}M`);
     }
 
-    const averageInterestPerYear = totalInterest / data.debtYears;
-    steps.push(`Average Interest/yr: $${totalInterest.toFixed(2)}M / ${data.debtYears} yrs = $${averageInterestPerYear.toFixed(2)}M/yr`);
+    const averageInterestPerYear = totalInterest / (data.debtYears || 1);
+    steps.push(`Average Interest/yr: $${totalInterest.toFixed(2)}M / ${(data.debtYears || 1)} yrs = $${averageInterestPerYear.toFixed(2)}M/yr`);
 
-    const residualValue = totalGpuCost * (data.residualValue / 100);
-    steps.push(`GPU Residual Value: $${totalGpuCost.toFixed(2)}M × ${data.residualValue}% = $${residualValue.toFixed(2)}M`);
+    const residualValue = totalGpuCost * ((data.residualValue || 0) / 100);
+    steps.push(`GPU Residual Value: $${totalGpuCost.toFixed(2)}M × ${(data.residualValue || 0)}% = $${residualValue.toFixed(2)}M`);
 
-    const residualValuePerYear = residualValue / data.gpuUsefulLife;
-    steps.push(`GPU Residual Value/yr: $${residualValue.toFixed(2)}M / ${data.gpuUsefulLife} yrs = $${residualValuePerYear.toFixed(2)}M/yr`);
+    const residualValuePerYear = residualValue / (data.gpuUsefulLife || 1);
+    steps.push(`GPU Residual Value/yr: $${residualValue.toFixed(2)}M / ${(data.gpuUsefulLife || 1)} yrs = $${residualValuePerYear.toFixed(2)}M/yr`);
 
     const netProfit = ebitda - gpuDepreciation - dcDepreciation - averageInterestPerYear + residualValuePerYear;
     steps.push(`Net Profit: $${ebitda.toFixed(2)}M - $${gpuDepreciation.toFixed(2)}M - $${dcDepreciation.toFixed(2)}M - $${averageInterestPerYear.toFixed(2)}M + $${residualValuePerYear.toFixed(2)}M = $${netProfit.toFixed(2)}M/yr`);
@@ -570,21 +654,22 @@ function App() {
     if (!site.enabled) return sum;
 
     if (site.type === 'Colocation') {
-      const totalLoadMW = site.data.totalLoadUnit === 'GW' ? site.data.totalLoadValue * 1000 : site.data.totalLoadValue;
-      const itLoad = totalLoadMW / site.data.pue;
-      const revenue = itLoad * site.data.revenuePerMW;
+      const totalLoadValue = site.data.totalLoadValue || 0;
+      const totalLoadMW = site.data.totalLoadUnit === 'GW' ? totalLoadValue * 1000 : totalLoadValue;
+      const itLoad = totalLoadMW / (site.data.pue || 1);
+      const revenue = itLoad * (site.data.revenuePerMW || 0);
       return sum + revenue;
     } else if (site.type === 'Hyperscaler Tenant') {
       let revenue = 0;
       if (site.data.revenueMode === 'direct') {
-        revenue = site.data.toplineRevenue;
+        revenue = site.data.toplineRevenue || 0;
       } else if (site.data.revenueMode === 'nebius') {
         const irenMsftBase = 9700;
-        revenue = (site.data.nebiusGpuCount / 76) * irenMsftBase;
+        revenue = ((site.data.nebiusGpuCount || 0) / 76) * irenMsftBase;
       }
       return sum + revenue;
     } else if (site.type === 'IREN Cloud') {
-      return sum + site.data.toplineRevenue;
+      return sum + (site.data.toplineRevenue || 0);
     }
     return sum;
   }, 0);
@@ -595,38 +680,45 @@ function App() {
     return sum + result.netProfit;
   }, 0);
 
+  // Calculate pre-tax net profits
+  const preTaxNetProfits = totalNetProfit - (sgaExpense || 0);
+
   // Calculate taxes
-  const corporateTax = totalNetProfit * (corporateTaxRate / 100);
-  const taxAbatement = corporateTax * (taxAbatementRate / 100);
+  const corporateTax = preTaxNetProfits * ((corporateTaxRate || 0) / 100);
+  const taxAbatement = corporateTax * ((taxAbatementRate || 0) / 100);
   const taxes = corporateTax - taxAbatement;
 
-  // Subtract taxes and SG&A from net profit
-  const adjustedNetProfit = totalNetProfit - taxes - sgaExpense;
+  // Calculate net profit after taxes
+  const netProfit = preTaxNetProfits - taxes;
 
   // Calculate market cap
-  const marketCap = adjustedNetProfit * peRatio;
+  const marketCap = netProfit * (peRatio || 0);
 
   // Calculate shares
   const fullyDilutedShares = useDirectSharesInput
-    ? directShares
-    : currentShares * (1 + dilutionPercentage / 100);
+    ? (directShares || 0)
+    : (currentShares || 0) * (1 + (dilutionPercentage || 0) / 100);
 
   // Calculate share price
-  const sharePrice = marketCap / fullyDilutedShares;
+  const sharePrice = fullyDilutedShares > 0 ? marketCap / fullyDilutedShares : 0;
 
   // Helper function to format values (M or B)
   const formatValue = (value, prefix = '$', suffix = '') => {
-    if (value >= 1000) {
-      return `${prefix}${(value / 1000).toFixed(2)}B${suffix}`;
+    const numValue = Number(value) || 0;
+    if (!isFinite(numValue)) return `${prefix}0M${suffix}`;
+    if (numValue >= 1000) {
+      return `${prefix}${(numValue / 1000).toFixed(2)}B${suffix}`;
     }
-    return `${prefix}${value.toFixed(0)}M${suffix}`;
+    return `${prefix}${numValue.toFixed(0)}M${suffix}`;
   };
 
   const formatShares = (value) => {
-    if (value >= 1000) {
-      return `${(value / 1000).toFixed(2)}B`;
+    const numValue = Number(value) || 0;
+    if (!isFinite(numValue)) return '0M';
+    if (numValue >= 1000) {
+      return `${(numValue / 1000).toFixed(2)}B`;
     }
-    return `${value.toFixed(1)}M`;
+    return `${numValue.toFixed(1)}M`;
   };
 
   return (
@@ -642,7 +734,7 @@ function App() {
           <div className="result-grid">
             <div className="result-item">
               <label>Share Price</label>
-              <div className="result-value highlight">${sharePrice.toFixed(2)}</div>
+              <div className="result-value highlight">${(Number(sharePrice) || 0).toFixed(2)}</div>
             </div>
             <div className="result-item">
               <label>Market Cap</label>
@@ -663,19 +755,33 @@ function App() {
           </div>
 
           <div className="calc-steps">
-            <div>Corporate Tax = Net Profit from Sites × Corporate Tax Rate = {formatValue(totalNetProfit)} × {corporateTaxRate}% = {formatValue(corporateTax)}</div>
-            <div>Tax Abatement = Corporate Tax × Tax Abatement Rate = {formatValue(corporateTax)} × {taxAbatementRate}% = {formatValue(taxAbatement)}</div>
-            <div>Taxes = Corporate Tax - Tax Abatement = {formatValue(corporateTax)} - {formatValue(taxAbatement)} = {formatValue(taxes)}</div>
-            <div>Net Profit = Net Profit from Sites - Taxes - SG&A = {formatValue(totalNetProfit)} - {formatValue(taxes)} - {formatValue(sgaExpense)} = {formatValue(adjustedNetProfit)}</div>
-            <div>Market Cap = Net Profit × P/E Ratio = {formatValue(adjustedNetProfit)} × {peRatio} = {formatValue(marketCap)}</div>
-            <div>Share Price = Market Cap / Fully Diluted Shares = {formatValue(marketCap)} / {formatShares(fullyDilutedShares)} = ${sharePrice.toFixed(2)}</div>
+            <div>Pre-tax Net Profits = Net Profit from Sites - SG&A = {formatValue(totalNetProfit)} - {formatValue(sgaExpense)} = {formatValue(preTaxNetProfits)}</div>
+            <div>Corporate Tax = Pre-tax Net Profits × Corporate Tax Rate = {formatValue(preTaxNetProfits)} × {corporateTaxRate}% = {formatValue(corporateTax)}</div>
+            <div>Tax Abatement and Tax Loss Realization = Corporate Tax × Tax Abatement and Tax Loss Realization Rate = {formatValue(corporateTax)} × {taxAbatementRate}% = {formatValue(taxAbatement)}</div>
+            <div>Taxes = Corporate Tax - Tax Abatement and Tax Loss Realization = {formatValue(corporateTax)} - {formatValue(taxAbatement)} = {formatValue(taxes)}</div>
+            <div>Net Profit = Pre-tax Net Profits - Taxes = {formatValue(preTaxNetProfits)} - {formatValue(taxes)} = {formatValue(netProfit)}</div>
+            <div>Market Cap = Net Profit × P/E Ratio = {formatValue(netProfit)} × {peRatio} = {formatValue(marketCap)}</div>
+            <div>Share Price = Market Cap / Fully Diluted Shares = {formatValue(marketCap)} / {formatShares(fullyDilutedShares)} = ${(Number(sharePrice) || 0).toFixed(2)}</div>
           </div>
         </div>
 
         {/* Expand/Collapse All Buttons */}
         <div className="accordion-controls">
-          <button onClick={expandAll} className="control-btn">Expand All</button>
-          <button onClick={collapseAll} className="control-btn">Collapse All</button>
+          <div className="control-btn-left">
+            <button onClick={expandAll} className="control-btn">Expand All</button>
+            <button onClick={collapseAll} className="control-btn">Collapse All</button>
+          </div>
+          <div className="control-btn-right">
+            <button onClick={downloadCSV} className="control-btn">Download Inputs</button>
+            <button onClick={() => document.getElementById('file-upload').click()} className="control-btn">Upload Inputs</button>
+            <input
+              id="file-upload"
+              type="file"
+              accept=".json"
+              onChange={uploadCSV}
+              style={{ display: 'none' }}
+            />
+          </div>
         </div>
 
         {/* Share Calculation Inputs */}
