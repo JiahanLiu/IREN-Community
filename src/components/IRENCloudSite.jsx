@@ -1,6 +1,8 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 
 function IRENCloudSite({ site, result, gpuPrices, gpuHourlyRates, updateSite, toggleSite, toggleAccordion, deleteSite }) {
+  const [gpuCountsOpen, setGpuCountsOpen] = useState(false);
+
   const update = (field, value) => {
     updateSite(site.id, { [field]: value });
   };
@@ -8,13 +10,13 @@ function IRENCloudSite({ site, result, gpuPrices, gpuHourlyRates, updateSite, to
   // Calculate current DC IT Load in MW
   const getCurrentDCITLoad = () => {
     if (site.data.loadInputMode === 'total') {
-      const totalLoadMW = site.data.sizeUnit === 'GW' 
-        ? site.data.sizeValue * 1000 
+      const totalLoadMW = site.data.sizeUnit === 'GW'
+        ? site.data.sizeValue * 1000
         : site.data.sizeValue;
       return totalLoadMW / (site.data.pue || 1);
     } else {
-      return site.data.itLoadUnit === 'GW' 
-        ? (site.data.itLoad || 0) * 1000 
+      return site.data.itLoadUnit === 'GW'
+        ? (site.data.itLoad || 0) * 1000
         : (site.data.itLoad || 0);
     }
   };
@@ -24,28 +26,29 @@ function IRENCloudSite({ site, result, gpuPrices, gpuHourlyRates, updateSite, to
     const currentLoad = getCurrentDCITLoad();
     const defaultLoad = site.data.defaultDCITLoad || currentLoad;
     const ratio = defaultLoad > 0 ? currentLoad / defaultLoad : 1;
-    
+
     const defaultGpus = site.data.defaultGpus || site.data.gpus;
-    return {
-      b300: Math.floor((defaultGpus.b300 || 0) * ratio),
-      b200: Math.floor((defaultGpus.b200 || 0) * ratio),
-      mi350x: Math.floor((defaultGpus.mi350x || 0) * ratio),
-      gb300: Math.floor((defaultGpus.gb300 || 0) * ratio),
-      hyperscaleBulkGB300: Math.floor((defaultGpus.hyperscaleBulkGB300 || 0) * ratio),
-    };
+    const scaledGpus = {};
+
+    // Dynamically scale all GPU types
+    Object.keys(gpuPrices).forEach(gpuType => {
+      scaledGpus[gpuType] = Math.round((defaultGpus[gpuType] || 0) * ratio);
+    });
+
+    return scaledGpus;
   };
 
   // Auto-scale GPUs when autoscale is enabled and load changes
   useEffect(() => {
     if (site.data.autoscaleGPUs) {
       const scaledGpus = calculateScaledGPUs();
-      
+
       // Only update if GPUs have actually changed
       const currentGpus = site.data.gpus;
       const gpusChanged = Object.keys(scaledGpus).some(
         key => scaledGpus[key] !== (currentGpus[key] || 0)
       );
-      
+
       if (gpusChanged) {
         if (site.data.autoCalculateRevenue) {
           const calculatedRevenue = calculateRevenueFromGPUs(scaledGpus);
@@ -55,7 +58,7 @@ function IRENCloudSite({ site, result, gpuPrices, gpuHourlyRates, updateSite, to
         }
       }
     }
-  }, [site.data.autoscaleGPUs, site.data.loadInputMode, site.data.sizeValue, site.data.sizeUnit, 
+  }, [site.data.autoscaleGPUs, site.data.loadInputMode, site.data.sizeValue, site.data.sizeUnit,
       site.data.pue, site.data.itLoad, site.data.itLoadUnit]);
 
   const handleNumberChange = (field, value) => {
@@ -92,13 +95,15 @@ function IRENCloudSite({ site, result, gpuPrices, gpuHourlyRates, updateSite, to
 
   const calculateRevenueFromGPUs = (gpus) => {
     const hoursPerYear = 24 * 365;
-    const revenueInDollars = (
-      (gpus.b200 || 0) * gpuHourlyRates.b200 * hoursPerYear +
-      (gpus.b300 || 0) * gpuHourlyRates.b300 * hoursPerYear +
-      (gpus.gb300 || 0) * gpuHourlyRates.gb300 * hoursPerYear +
-      (gpus.mi350x || 0) * gpuHourlyRates.mi350x * hoursPerYear +
-      (gpus.hyperscaleBulkGB300 || 0) * gpuHourlyRates.hyperscaleBulkGB300 * hoursPerYear
-    );
+    let revenueInDollars = 0;
+
+    // Dynamically calculate revenue for all GPU types
+    Object.keys(gpuPrices).forEach(gpuType => {
+      const gpuCount = gpus[gpuType] || 0;
+      const hourlyRate = gpuHourlyRates[gpuType] || 0;
+      revenueInDollars += gpuCount * hourlyRate * hoursPerYear;
+    });
+
     const roundedDollars = Math.round(revenueInDollars); // Round to nearest dollar
     return roundedDollars / 1000000; // Convert to millions
   };
@@ -117,27 +122,27 @@ function IRENCloudSite({ site, result, gpuPrices, gpuHourlyRates, updateSite, to
 
   const handleAutoscaleGPUsToggle = () => {
     const newAutoscale = !site.data.autoscaleGPUs;
-    
+
     // If enabling autoscale, immediately calculate scaled GPUs
     if (newAutoscale) {
       const scaledGpus = calculateScaledGPUs();
-      
+
       // Also initialize default values if not set
       const defaultLoad = site.data.defaultDCITLoad || getCurrentDCITLoad();
       const defaultGpus = site.data.defaultGpus || site.data.gpus;
-      
+
       if (site.data.autoCalculateRevenue) {
         const calculatedRevenue = calculateRevenueFromGPUs(scaledGpus);
-        updateSite(site.id, { 
-          autoscaleGPUs: newAutoscale, 
+        updateSite(site.id, {
+          autoscaleGPUs: newAutoscale,
           gpus: scaledGpus,
           defaultDCITLoad: defaultLoad,
           defaultGpus: defaultGpus,
-          toplineRevenue: calculatedRevenue 
+          toplineRevenue: calculatedRevenue
         });
       } else {
-        updateSite(site.id, { 
-          autoscaleGPUs: newAutoscale, 
+        updateSite(site.id, {
+          autoscaleGPUs: newAutoscale,
           gpus: scaledGpus,
           defaultDCITLoad: defaultLoad,
           defaultGpus: defaultGpus
@@ -301,62 +306,30 @@ function IRENCloudSite({ site, result, gpuPrices, gpuHourlyRates, updateSite, to
           </div>
 
           <div className="gpu-inputs">
-            <h4>GPU Counts</h4>
-            <div className="input-row">
-              <label>B300</label>
-              <input
-                type="number"
-                value={site.data.gpus.b300}
-                onChange={(e) => handleGpuChange('b300', e.target.value)}
-                onBlur={(e) => handleGpuBlur('b300', e.target.value)}
-                disabled={site.data.autoscaleGPUs}
-                style={site.data.autoscaleGPUs ? { backgroundColor: '#f0f0f0', cursor: 'not-allowed' } : {}}
-              />
-            </div>
-            <div className="input-row">
-              <label>B200</label>
-              <input
-                type="number"
-                value={site.data.gpus.b200}
-                onChange={(e) => handleGpuChange('b200', e.target.value)}
-                onBlur={(e) => handleGpuBlur('b200', e.target.value)}
-                disabled={site.data.autoscaleGPUs}
-                style={site.data.autoscaleGPUs ? { backgroundColor: '#f0f0f0', cursor: 'not-allowed' } : {}}
-              />
-            </div>
-            <div className="input-row">
-              <label>MI350X</label>
-              <input
-                type="number"
-                value={site.data.gpus.mi350x}
-                onChange={(e) => handleGpuChange('mi350x', e.target.value)}
-                onBlur={(e) => handleGpuBlur('mi350x', e.target.value)}
-                disabled={site.data.autoscaleGPUs}
-                style={site.data.autoscaleGPUs ? { backgroundColor: '#f0f0f0', cursor: 'not-allowed' } : {}}
-              />
-            </div>
-            <div className="input-row">
-              <label>GB300</label>
-              <input
-                type="number"
-                value={site.data.gpus.gb300}
-                onChange={(e) => handleGpuChange('gb300', e.target.value)}
-                onBlur={(e) => handleGpuBlur('gb300', e.target.value)}
-                disabled={site.data.autoscaleGPUs}
-                style={site.data.autoscaleGPUs ? { backgroundColor: '#f0f0f0', cursor: 'not-allowed' } : {}}
-              />
-            </div>
-            <div className="input-row">
-              <label>Hyperscale Bulk GB300</label>
-              <input
-                type="number"
-                value={site.data.gpus.hyperscaleBulkGB300}
-                onChange={(e) => handleGpuChange('hyperscaleBulkGB300', e.target.value)}
-                onBlur={(e) => handleGpuBlur('hyperscaleBulkGB300', e.target.value)}
-                disabled={site.data.autoscaleGPUs}
-                style={site.data.autoscaleGPUs ? { backgroundColor: '#f0f0f0', cursor: 'not-allowed' } : {}}
-              />
-            </div>
+            <h4
+              onClick={() => setGpuCountsOpen(!gpuCountsOpen)}
+              style={{ cursor: 'pointer', userSelect: 'none', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
+            >
+              <span>GPU Counts</span>
+              <span style={{ fontSize: '1.2em' }}>{gpuCountsOpen ? '−' : '+'}</span>
+            </h4>
+            {gpuCountsOpen && (
+              <>
+                {Object.keys(gpuPrices).map(gpuType => (
+                  <div key={gpuType} className="input-row">
+                    <label style={{ textTransform: 'uppercase' }}>{gpuType.replace(/([A-Z])/g, ' $1').trim()}</label>
+                    <input
+                      type="number"
+                      value={site.data.gpus[gpuType] ?? ''}
+                      onChange={(e) => handleGpuChange(gpuType, e.target.value)}
+                      onBlur={(e) => handleGpuBlur(gpuType, e.target.value)}
+                      disabled={site.data.autoscaleGPUs}
+                      style={site.data.autoscaleGPUs ? { backgroundColor: '#f0f0f0', cursor: 'not-allowed' } : {}}
+                    />
+                  </div>
+                ))}
+              </>
+            )}
           </div>
 
               <div className="input-row">

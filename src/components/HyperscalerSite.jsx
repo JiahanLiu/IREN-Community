@@ -1,6 +1,8 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 
 function HyperscalerSite({ site, result, gpuPrices, gpuHourlyRates, updateSite, toggleSite, toggleAccordion, deleteSite }) {
+  const [gpuCountsOpen, setGpuCountsOpen] = useState(false);
+
   const update = (field, value) => {
     updateSite(site.id, { [field]: value });
   };
@@ -26,7 +28,7 @@ function HyperscalerSite({ site, result, gpuPrices, gpuHourlyRates, updateSite, 
     const ratio = defaultLoad > 0 ? currentLoad / defaultLoad : 1;
 
     const defaultGpuCount = site.data.defaultDirectGpuCount ?? site.data.directGpuCount ?? 0;
-    return Math.floor(defaultGpuCount * ratio);
+    return Math.round(defaultGpuCount * ratio);
   };
 
   // Calculate scaled GPU counts for hardware mode 'gpus'
@@ -36,13 +38,14 @@ function HyperscalerSite({ site, result, gpuPrices, gpuHourlyRates, updateSite, 
     const ratio = defaultLoad > 0 ? currentLoad / defaultLoad : 1;
 
     const defaultGpus = site.data.defaultGpus || site.data.gpus || {};
-    return {
-      b300: Math.floor((defaultGpus.b300 || 0) * ratio),
-      b200: Math.floor((defaultGpus.b200 || 0) * ratio),
-      mi350x: Math.floor((defaultGpus.mi350x || 0) * ratio),
-      gb300: Math.floor((defaultGpus.gb300 || 0) * ratio),
-      hyperscaleBulkGB300: Math.floor((defaultGpus.hyperscaleBulkGB300 || 0) * ratio),
-    };
+    const scaledGpus = {};
+
+    // Dynamically scale all GPU types
+    Object.keys(gpuPrices).forEach(gpuType => {
+      scaledGpus[gpuType] = Math.round((defaultGpus[gpuType] || 0) * ratio);
+    });
+
+    return scaledGpus;
   };
 
   // Auto-scale GPU count when autoscale is enabled and load changes
@@ -93,7 +96,7 @@ function HyperscalerSite({ site, result, gpuPrices, gpuHourlyRates, updateSite, 
 
   const calculateContractRevenue = (gpuCount, contractYears) => {
     const hoursPerYear = 24 * 365;
-    const revenueInDollars = gpuCount * 1000 * gpuHourlyRates.hyperscaleBulkGB300 * contractYears * hoursPerYear;
+    const revenueInDollars = gpuCount * gpuHourlyRates.hyperscaleBulkGB300 * contractYears * hoursPerYear;
     const roundedDollars = Math.round(revenueInDollars);
     return roundedDollars / 1000000;
   };
@@ -348,16 +351,45 @@ function HyperscalerSite({ site, result, gpuPrices, gpuHourlyRates, updateSite, 
             </div>
           </div>
 
-          <div className="input-row">
-            <label>Number of Hyperscale Bulk GB300 (thousands)</label>
-            <input
-              type="number"
-              value={site.data.directGpuCount ?? 0}
-              onChange={(e) => handleGpuCountChange('directGpuCount', e.target.value)}
-              onBlur={(e) => handleGpuCountBlur('directGpuCount', e.target.value)}
-              disabled={site.data.autoscaleGPUs}
-              style={site.data.autoscaleGPUs ? { backgroundColor: '#f0f0f0', cursor: 'not-allowed' } : {}}
-            />
+          <div className="gpu-inputs">
+            <h4
+              onClick={() => setGpuCountsOpen(!gpuCountsOpen)}
+              style={{ cursor: 'pointer', userSelect: 'none', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
+            >
+              <span>GPU Counts</span>
+              <span style={{ fontSize: '1.2em' }}>{gpuCountsOpen ? '−' : '+'}</span>
+            </h4>
+            {gpuCountsOpen && (
+              <>
+                {Object.keys(gpuPrices).map(gpuType => {
+                  // Use directGpuCount for hyperscaleBulkGB300, gpus object for others
+                  const isHyperscaleBulk = gpuType === 'hyperscaleBulkGB300';
+                  const value = isHyperscaleBulk
+                    ? (site.data.directGpuCount ?? '')
+                    : (site.data.gpus?.[gpuType] ?? '');
+                  const onChange = isHyperscaleBulk
+                    ? (e) => handleGpuCountChange('directGpuCount', e.target.value)
+                    : (e) => handleGpuChange(gpuType, e.target.value);
+                  const onBlur = isHyperscaleBulk
+                    ? (e) => handleGpuCountBlur('directGpuCount', e.target.value)
+                    : (e) => handleGpuBlur(gpuType, e.target.value);
+
+                  return (
+                    <div key={gpuType} className="input-row">
+                      <label style={{ textTransform: 'uppercase' }}>{gpuType.replace(/([A-Z])/g, ' $1').trim()}</label>
+                      <input
+                        type="number"
+                        value={value}
+                        onChange={onChange}
+                        onBlur={onBlur}
+                        disabled={site.data.autoscaleGPUs}
+                        style={site.data.autoscaleGPUs ? { backgroundColor: '#f0f0f0', cursor: 'not-allowed' } : {}}
+                      />
+                    </div>
+                  );
+                })}
+              </>
+            )}
           </div>
 
           <div className="input-row">
@@ -438,67 +470,6 @@ function HyperscalerSite({ site, result, gpuPrices, gpuHourlyRates, updateSite, 
                 onChange={(e) => handleNumberChange('totalHardwareCost', e.target.value)}
                 onBlur={(e) => handleNumberBlur('totalHardwareCost', e.target.value)}
               />
-            </div>
-          )}
-
-          {site.data.hardwareMode === 'gpus' && (
-            <div className="gpu-inputs">
-              <h4>GPU Counts</h4>
-              <div className="input-row">
-                <label>B300</label>
-                <input
-                  type="number"
-                  value={site.data.gpus?.b300 ?? 0}
-                  onChange={(e) => handleGpuChange('b300', e.target.value)}
-                  onBlur={(e) => handleGpuBlur('b300', e.target.value)}
-                  disabled={site.data.autoscaleGPUs}
-                  style={site.data.autoscaleGPUs ? { backgroundColor: '#f0f0f0', cursor: 'not-allowed' } : {}}
-                />
-              </div>
-              <div className="input-row">
-                <label>B200</label>
-                <input
-                  type="number"
-                  value={site.data.gpus?.b200 ?? 0}
-                  onChange={(e) => handleGpuChange('b200', e.target.value)}
-                  onBlur={(e) => handleGpuBlur('b200', e.target.value)}
-                  disabled={site.data.autoscaleGPUs}
-                  style={site.data.autoscaleGPUs ? { backgroundColor: '#f0f0f0', cursor: 'not-allowed' } : {}}
-                />
-              </div>
-              <div className="input-row">
-                <label>MI350X</label>
-                <input
-                  type="number"
-                  value={site.data.gpus?.mi350x ?? 0}
-                  onChange={(e) => handleGpuChange('mi350x', e.target.value)}
-                  onBlur={(e) => handleGpuBlur('mi350x', e.target.value)}
-                  disabled={site.data.autoscaleGPUs}
-                  style={site.data.autoscaleGPUs ? { backgroundColor: '#f0f0f0', cursor: 'not-allowed' } : {}}
-                />
-              </div>
-              <div className="input-row">
-                <label>GB300</label>
-                <input
-                  type="number"
-                  value={site.data.gpus?.gb300 ?? 0}
-                  onChange={(e) => handleGpuChange('gb300', e.target.value)}
-                  onBlur={(e) => handleGpuBlur('gb300', e.target.value)}
-                  disabled={site.data.autoscaleGPUs}
-                  style={site.data.autoscaleGPUs ? { backgroundColor: '#f0f0f0', cursor: 'not-allowed' } : {}}
-                />
-              </div>
-              <div className="input-row">
-                <label>Hyperscale Bulk GB300</label>
-                <input
-                  type="number"
-                  value={site.data.gpus?.hyperscaleBulkGB300 ?? 0}
-                  onChange={(e) => handleGpuChange('hyperscaleBulkGB300', e.target.value)}
-                  onBlur={(e) => handleGpuBlur('hyperscaleBulkGB300', e.target.value)}
-                  disabled={site.data.autoscaleGPUs}
-                  style={site.data.autoscaleGPUs ? { backgroundColor: '#f0f0f0', cursor: 'not-allowed' } : {}}
-                />
-              </div>
             </div>
           )}
 

@@ -58,7 +58,7 @@ function App() {
         retrofitCapexPerMW: 0,
         dcLifetime: 20,
         gpus: { b300: 9500, b200: 9600, mi350x: 1100, gb300: 1200, hyperscaleBulkGB300: 0 },
-        defaultDCITLoad: 45.45,
+        defaultDCITLoad: 50 / 1.1,
         defaultGpus: { b300: 9500, b200: 9600, mi350x: 1100, gb300: 1200, hyperscaleBulkGB300: 0 },
         autoscaleGPUs: true,
         gpuUsefulLife: 5,
@@ -113,9 +113,9 @@ function App() {
         itLoadUnit: 'MW',
         pue: 1.5,
         revenueMode: 'direct',
-        directGpuCount: 76,
+        directGpuCount: 76000,
         defaultDCITLoad: 200,
-        defaultDirectGpuCount: 76,
+        defaultDirectGpuCount: 76000,
         autoscaleGPUs: true,
         toplineRevenue: 9700,
         contractYears: 5,
@@ -146,9 +146,9 @@ function App() {
         itLoad: 300,
         itLoadUnit: 'MW',
         pue: 1.5,
-        directGpuCount: 114,
+        directGpuCount: 114000,
         defaultDCITLoad: 300,
-        defaultDirectGpuCount: 114,
+        defaultDirectGpuCount: 114000,
         autoscaleGPUs: true,
         toplineRevenue: 14544.47,
         contractYears: 5,
@@ -560,8 +560,8 @@ function App() {
       const defaultHourlyRate = 1940000000 / 365 / 76000 / 24;
       const currentHourlyRate = gpuHourlyRates.hyperscaleBulkGB300;
       const hourlyRateRatio = currentHourlyRate / defaultHourlyRate;
-      const gpuCountProratedNebius = (gpuCount / 100) * nebiusBase * hourlyRateRatio;
-      steps.push(`GPU Count Prorated Nebius Topline: (${gpuCount}k / 100k) × $${nebiusBase}M × ${hourlyRateRatio.toFixed(4)} = $${gpuCountProratedNebius.toFixed(2)}M`);
+      const gpuCountProratedNebius = (gpuCount / 100000) * nebiusBase * hourlyRateRatio;
+      steps.push(`GPU Count Prorated Nebius Topline: (${gpuCount} / 100k) × $${nebiusBase}M × ${hourlyRateRatio.toFixed(4)} = $${gpuCountProratedNebius.toFixed(2)}M`);
 
       // Improved Contracts Percentage (user input)
       const improvedPercentage = data.improvedContractsPercentage || 0;
@@ -1017,7 +1017,7 @@ function App() {
 
         {/* Version Footer */}
         <div style={{ textAlign: 'center', padding: '2rem 0', fontSize: '0.85rem', color: '#666' }}>
-          Version {packageJson.version.split('.').slice(0, 2).join('.')}
+          Version {packageJson.version}
         </div>
       </div>
     </div>
