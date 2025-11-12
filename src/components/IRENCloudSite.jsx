@@ -1,6 +1,6 @@
 import React from 'react';
 
-function IRENCloudSite({ site, result, gpuPrices, updateSite, toggleSite, toggleAccordion, deleteSite }) {
+function IRENCloudSite({ site, result, gpuPrices, gpuHourlyRates, updateSite, toggleSite, toggleAccordion, deleteSite }) {
   const update = (field, value) => {
     updateSite(site.id, { [field]: value });
   };
@@ -14,11 +14,52 @@ function IRENCloudSite({ site, result, gpuPrices, updateSite, toggleSite, toggle
   };
 
   const handleGpuChange = (gpuType, value) => {
-    update('gpus', { ...site.data.gpus, [gpuType]: value === '' ? '' : parseFloat(value) });
+    const newGpus = { ...site.data.gpus, [gpuType]: value === '' ? '' : parseFloat(value) };
+
+    // Auto-calculate revenue if enabled
+    if (site.data.autoCalculateRevenue) {
+      const calculatedRevenue = calculateRevenueFromGPUs(newGpus);
+      updateSite(site.id, { gpus: newGpus, toplineRevenue: calculatedRevenue });
+    } else {
+      update('gpus', newGpus);
+    }
   };
 
   const handleGpuBlur = (gpuType, value) => {
-    update('gpus', { ...site.data.gpus, [gpuType]: value === '' ? 0 : parseFloat(value) || 0 });
+    const newGpus = { ...site.data.gpus, [gpuType]: value === '' ? 0 : parseFloat(value) || 0 };
+
+    // Auto-calculate revenue if enabled
+    if (site.data.autoCalculateRevenue) {
+      const calculatedRevenue = calculateRevenueFromGPUs(newGpus);
+      updateSite(site.id, { gpus: newGpus, toplineRevenue: calculatedRevenue });
+    } else {
+      update('gpus', newGpus);
+    }
+  };
+
+  const calculateRevenueFromGPUs = (gpus) => {
+    const hoursPerYear = 24 * 365;
+    const revenueInDollars = (
+      (gpus.b200 || 0) * gpuHourlyRates.b200 * hoursPerYear +
+      (gpus.b300 || 0) * gpuHourlyRates.b300 * hoursPerYear +
+      (gpus.gb300 || 0) * gpuHourlyRates.gb300 * hoursPerYear +
+      (gpus.mi350x || 0) * gpuHourlyRates.mi350x * hoursPerYear +
+      (gpus.hyperscaleBulkGB300 || 0) * gpuHourlyRates.hyperscaleBulkGB300 * hoursPerYear
+    );
+    const roundedDollars = Math.round(revenueInDollars); // Round to nearest dollar
+    return roundedDollars / 1000000; // Convert to millions
+  };
+
+  const handleAutoCalculateToggle = () => {
+    const newAutoCalculate = !site.data.autoCalculateRevenue;
+
+    // If enabling auto-calculate, immediately calculate revenue
+    if (newAutoCalculate) {
+      const calculatedRevenue = calculateRevenueFromGPUs(site.data.gpus);
+      updateSite(site.id, { autoCalculateRevenue: newAutoCalculate, toplineRevenue: calculatedRevenue });
+    } else {
+      update('autoCalculateRevenue', newAutoCalculate);
+    }
   };
 
   const isOpen = site.accordionOpen;
@@ -147,26 +188,6 @@ function IRENCloudSite({ site, result, gpuPrices, updateSite, toggleSite, toggle
                 </div>
               )}
 
-              <div className="input-row">
-                <label>Base Revenue ($M)</label>
-                <input
-                  type="number"
-                  value={site.data.toplineRevenue}
-                  onChange={(e) => handleNumberChange('toplineRevenue', e.target.value)}
-                  onBlur={(e) => handleNumberBlur('toplineRevenue', e.target.value)}
-                />
-              </div>
-
-              <div className="input-row">
-                <label>Project EBITDA Margin (%)</label>
-                <input
-                  type="number"
-                  value={site.data.ebitdaMargin}
-                  onChange={(e) => handleNumberChange('ebitdaMargin', e.target.value)}
-                  onBlur={(e) => handleNumberBlur('ebitdaMargin', e.target.value)}
-                />
-              </div>
-
           <div className="gpu-inputs">
             <h4>GPU Counts</h4>
             <div className="input-row">
@@ -215,6 +236,54 @@ function IRENCloudSite({ site, result, gpuPrices, updateSite, toggleSite, toggle
               />
             </div>
           </div>
+
+              <div className="input-row">
+                <label>Auto Calculate Base Revenue from GPU Counts?</label>
+                <div className="radio-group">
+                  <label>
+                    <input
+                      type="radio"
+                      checked={site.data.autoCalculateRevenue === true}
+                      onChange={() => handleAutoCalculateToggle()}
+                    />
+                    Yes
+                  </label>
+                  <label>
+                    <input
+                      type="radio"
+                      checked={site.data.autoCalculateRevenue !== true}
+                      onChange={() => {
+                        if (site.data.autoCalculateRevenue) {
+                          update('autoCalculateRevenue', false);
+                        }
+                      }}
+                    />
+                    No
+                  </label>
+                </div>
+              </div>
+
+              <div className="input-row">
+                <label>Base Revenue ($M)</label>
+                <input
+                  type="number"
+                  value={site.data.toplineRevenue}
+                  onChange={(e) => handleNumberChange('toplineRevenue', e.target.value)}
+                  onBlur={(e) => handleNumberBlur('toplineRevenue', e.target.value)}
+                  disabled={site.data.autoCalculateRevenue}
+                  style={site.data.autoCalculateRevenue ? { backgroundColor: '#f0f0f0', cursor: 'not-allowed' } : {}}
+                />
+              </div>
+
+              <div className="input-row">
+                <label>Project EBITDA Margin (%)</label>
+                <input
+                  type="number"
+                  value={site.data.ebitdaMargin}
+                  onChange={(e) => handleNumberChange('ebitdaMargin', e.target.value)}
+                  onBlur={(e) => handleNumberBlur('ebitdaMargin', e.target.value)}
+                />
+              </div>
 
           <div className="input-row">
             <label>GPU Deployment Period (years)</label>

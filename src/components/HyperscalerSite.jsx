@@ -1,6 +1,6 @@
 import React from 'react';
 
-function HyperscalerSite({ site, result, gpuPrices, updateSite, toggleSite, toggleAccordion, deleteSite }) {
+function HyperscalerSite({ site, result, gpuPrices, gpuHourlyRates, updateSite, toggleSite, toggleAccordion, deleteSite }) {
   const update = (field, value) => {
     updateSite(site.id, { [field]: value });
   };
@@ -18,6 +18,73 @@ function HyperscalerSite({ site, result, gpuPrices, updateSite, toggleSite, togg
     }
 
     update(field, finalValue);
+  };
+
+  const calculateContractRevenue = (gpuCount, contractYears) => {
+    const hoursPerYear = 24 * 365;
+    const revenueInDollars = gpuCount * 1000 * gpuHourlyRates.hyperscaleBulkGB300 * contractYears * hoursPerYear;
+    const roundedDollars = Math.round(revenueInDollars);
+    return roundedDollars / 1000000;
+  };
+
+  const handleGpuCountChange = (field, value) => {
+    const parsedValue = value === '' ? '' : parseFloat(value);
+
+    // Auto-calculate base contract revenue if enabled
+    if (site.data.autoCalculateRevenue && parsedValue !== '') {
+      const revenueInMillions = calculateContractRevenue(parsedValue, site.data.contractYears || 1);
+      updateSite(site.id, { [field]: parsedValue, toplineRevenue: revenueInMillions });
+    } else {
+      update(field, parsedValue);
+    }
+  };
+
+  const handleGpuCountBlur = (field, value, defaultValue = 0) => {
+    const finalValue = value === '' ? defaultValue : parseFloat(value) || defaultValue;
+
+    // Auto-calculate base contract revenue if enabled
+    if (site.data.autoCalculateRevenue) {
+      const revenueInMillions = calculateContractRevenue(finalValue, site.data.contractYears || 1);
+      updateSite(site.id, { [field]: finalValue, toplineRevenue: revenueInMillions });
+    } else {
+      update(field, finalValue);
+    }
+  };
+
+  const handleContractYearsChange = (value) => {
+    const parsedValue = value === '' ? '' : parseFloat(value);
+
+    // Auto-calculate base contract revenue if enabled
+    if (site.data.autoCalculateRevenue && parsedValue !== '') {
+      const revenueInMillions = calculateContractRevenue(site.data.directGpuCount || 0, parsedValue);
+      updateSite(site.id, { contractYears: parsedValue, toplineRevenue: revenueInMillions });
+    } else {
+      update('contractYears', parsedValue);
+    }
+  };
+
+  const handleContractYearsBlur = (value, defaultValue = 1) => {
+    const finalValue = value === '' ? defaultValue : parseFloat(value) || defaultValue;
+
+    // Auto-calculate base contract revenue if enabled
+    if (site.data.autoCalculateRevenue) {
+      const revenueInMillions = calculateContractRevenue(site.data.directGpuCount || 0, finalValue);
+      updateSite(site.id, { contractYears: finalValue, toplineRevenue: revenueInMillions });
+    } else {
+      update('contractYears', finalValue);
+    }
+  };
+
+  const handleAutoCalculateToggle = () => {
+    const newAutoCalculate = !site.data.autoCalculateRevenue;
+
+    // If enabling auto-calculate, immediately calculate revenue
+    if (newAutoCalculate) {
+      const revenueInMillions = calculateContractRevenue(site.data.directGpuCount || 0, site.data.contractYears || 1);
+      updateSite(site.id, { autoCalculateRevenue: newAutoCalculate, toplineRevenue: revenueInMillions });
+    } else {
+      update('autoCalculateRevenue', newAutoCalculate);
+    }
   };
 
   const handleGpuChange = (gpuType, value) => {
@@ -147,58 +214,60 @@ function HyperscalerSite({ site, result, gpuPrices, updateSite, toggleSite, togg
           )}
 
           <div className="input-row">
-            <label>Base Revenue Input Mode</label>
-            <select
-              value={site.data.revenueMode}
-              onChange={(e) => update('revenueMode', e.target.value)}
-            >
-              <option value="direct">Direct Revenue Input</option>
-              <option value="nebius">GPU Count Then Prorated to First IREN-MSFT Contract</option>
-            </select>
+            <label>Number of Hyperscale Bulk GB300 (thousands)</label>
+            <input
+              type="number"
+              value={site.data.directGpuCount ?? 0}
+              onChange={(e) => handleGpuCountChange('directGpuCount', e.target.value)}
+              onBlur={(e) => handleGpuCountBlur('directGpuCount', e.target.value)}
+            />
           </div>
-
-          {site.data.revenueMode === 'direct' && (
-            <>
-              <div className="input-row">
-                <label>Number of GPUs (thousands)</label>
-                <input
-                  type="number"
-                  value={site.data.directGpuCount ?? 0}
-                  onChange={(e) => handleNumberChange('directGpuCount', e.target.value)}
-                  onBlur={(e) => handleNumberBlur('directGpuCount', e.target.value)}
-                />
-              </div>
-              <div className="input-row">
-                <label>Base Revenue ($M)</label>
-                <input
-                  type="number"
-                  value={site.data.toplineRevenue}
-                  onChange={(e) => handleNumberChange('toplineRevenue', e.target.value)}
-                  onBlur={(e) => handleNumberBlur('toplineRevenue', e.target.value)}
-                />
-              </div>
-            </>
-          )}
-
-          {site.data.revenueMode === 'nebius' && (
-            <div className="input-row">
-              <label>Number of GPUs (thousands)</label>
-              <input
-                type="number"
-                value={site.data.nebiusGpuCount ?? 0}
-                onChange={(e) => handleNumberChange('nebiusGpuCount', e.target.value)}
-                onBlur={(e) => handleNumberBlur('nebiusGpuCount', e.target.value)}
-              />
-            </div>
-          )}
 
           <div className="input-row">
             <label>Contract Years</label>
             <input
               type="number"
               value={site.data.contractYears}
-              onChange={(e) => handleNumberChange('contractYears', e.target.value)}
-              onBlur={(e) => handleNumberBlur('contractYears', e.target.value, 1)}
+              onChange={(e) => handleContractYearsChange(e.target.value)}
+              onBlur={(e) => handleContractYearsBlur(e.target.value, 1)}
+            />
+          </div>
+
+          <div className="input-row">
+            <label>Auto Calculate Base Contract Revenue from GPU Counts</label>
+            <div className="radio-group">
+              <label>
+                <input
+                  type="radio"
+                  checked={site.data.autoCalculateRevenue === true}
+                  onChange={() => handleAutoCalculateToggle()}
+                />
+                Yes
+              </label>
+              <label>
+                <input
+                  type="radio"
+                  checked={site.data.autoCalculateRevenue !== true}
+                  onChange={() => {
+                    if (site.data.autoCalculateRevenue) {
+                      update('autoCalculateRevenue', false);
+                    }
+                  }}
+                />
+                No
+              </label>
+            </div>
+          </div>
+
+          <div className="input-row">
+            <label>Base Contract Revenue ($M)</label>
+            <input
+              type="number"
+              value={site.data.toplineRevenue}
+              onChange={(e) => handleNumberChange('toplineRevenue', e.target.value)}
+              onBlur={(e) => handleNumberBlur('toplineRevenue', e.target.value)}
+              disabled={site.data.autoCalculateRevenue}
+              style={site.data.autoCalculateRevenue ? { backgroundColor: '#f0f0f0', cursor: 'not-allowed' } : {}}
             />
           </div>
 

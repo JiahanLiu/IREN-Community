@@ -16,6 +16,15 @@ function App() {
     mi350x: 42788.92,
   });
 
+  // GPU Hourly Rates
+  const [gpuHourlyRates, setGpuHourlyRates] = useState({
+    b200: 500000000 / 661169760 * 3.08,
+    b300: 500000000 / 661169760 * 3.85,
+    gb300: 500000000 / 661169760 * 5.11,
+    mi350x: 500000000 / 661169760 * 2.91,
+    hyperscaleBulkGB300: 1940000000 / 365 / 76000 / 24,
+  });
+
   // Share calculation inputs
   const [useDirectSharesInput, setUseDirectSharesInput] = useState(false);
   const [directShares, setDirectShares] = useState(365.3); // in millions
@@ -54,6 +63,7 @@ function App() {
         interestRate: 7,
         debtYears: 5,
         residualValue: 0,
+        autoCalculateRevenue: false,
       }
     },
     {
@@ -80,6 +90,7 @@ function App() {
         interestRate: 7,
         debtYears: 5,
         residualValue: 0,
+        autoCalculateRevenue: false,
       }
     },
     {
@@ -110,6 +121,7 @@ function App() {
         residualValue: 0,
         improvedContractsPercentage: 9.7 / 13.224 * 100,
         contractGapEnabled: false,
+        autoCalculateRevenue: false,
       }
     },
     {
@@ -125,8 +137,8 @@ function App() {
         itLoad: 300,
         itLoadUnit: 'MW',
         pue: 1.5,
-        revenueMode: 'nebius',
-        nebiusGpuCount: 114,
+        directGpuCount: 114,
+        toplineRevenue: 14544.47,
         contractYears: 5,
         ebitdaMargin: 85,
         hardwareMode: 'total',
@@ -139,6 +151,7 @@ function App() {
         residualValue: 0,
         improvedContractsPercentage: 86,
         contractGapEnabled: true,
+        autoCalculateRevenue: false,
       }
     },
     {
@@ -212,6 +225,7 @@ function App() {
   const downloadCSV = () => {
     const data = {
       gpuPrices,
+      gpuHourlyRates,
       useDirectSharesInput,
       directShares,
       currentShares,
@@ -258,6 +272,17 @@ function App() {
             b200: data.gpuPrices.b200 ?? gpuPrices.b200,
             b300: data.gpuPrices.b300 ?? gpuPrices.b300,
             mi350x: data.gpuPrices.mi350x ?? gpuPrices.mi350x,
+          });
+        }
+
+        // Update GPU hourly rates if present
+        if (data.gpuHourlyRates) {
+          setGpuHourlyRates({
+            hyperscaleBulkGB300: data.gpuHourlyRates.hyperscaleBulkGB300 ?? gpuHourlyRates.hyperscaleBulkGB300,
+            gb300: data.gpuHourlyRates.gb300 ?? gpuHourlyRates.gb300,
+            b200: data.gpuHourlyRates.b200 ?? gpuHourlyRates.b200,
+            b300: data.gpuHourlyRates.b300 ?? gpuHourlyRates.b300,
+            mi350x: data.gpuHourlyRates.mi350x ?? gpuHourlyRates.mi350x,
           });
         }
 
@@ -330,6 +355,7 @@ function App() {
         residualValue: 0,
         improvedContractsPercentage: 0,
         contractGapEnabled: false,
+        autoCalculateRevenue: false,
       },
       'IREN Cloud': {
         toplineRevenue: 500,
@@ -349,6 +375,7 @@ function App() {
         interestRate: 7,
         debtYears: 5,
         residualValue: 0,
+        autoCalculateRevenue: false,
       }
     };
 
@@ -411,15 +438,8 @@ function App() {
     const steps = [];
 
     // Calculate revenue
-    let revenue = 0;
-    if (data.revenueMode === 'direct') {
-      revenue = data.toplineRevenue || 0;
-      steps.push(`Base Revenue: $${revenue.toFixed(2)}M`);
-    } else if (data.revenueMode === 'nebius') {
-      const irenMsftBase = 9700; // $9.7B
-      revenue = ((data.nebiusGpuCount || 0) / 76) * irenMsftBase;
-      steps.push(`Base Revenue: (${(data.nebiusGpuCount || 0)}k / 76k) × $${irenMsftBase}M = $${revenue.toFixed(2)}M`);
-    }
+    const revenue = data.toplineRevenue || 0;
+    steps.push(`Base Contract Revenue: $${revenue.toFixed(2)}M`);
 
     const ebitda = revenue * ((data.ebitdaMargin || 0) / 100);
     steps.push(`EBITDA: $${revenue.toFixed(2)}M × ${(data.ebitdaMargin || 0)}% = $${ebitda.toFixed(2)}M`);
@@ -520,13 +540,16 @@ function App() {
       steps.push(''); // Empty line for spacing
       steps.push('--- Contract Gap Closer to Nebius ---');
 
-      // Get GPU count (from either direct or nebius mode)
-      const gpuCount = data.revenueMode === 'direct' ? (data.directGpuCount || 0) : (data.nebiusGpuCount || 0);
+      // Get GPU count
+      const gpuCount = data.directGpuCount || 0;
 
-      // GPU Count Prorated Nebius Topline
+      // GPU Count Prorated Nebius Topline with hourly rate adjustment
       const nebiusBase = 17400; // $17.4B
-      const gpuCountProratedNebius = (gpuCount / 100) * nebiusBase;
-      steps.push(`GPU Count Prorated Nebius Topline: (${gpuCount}k / 100k) × $${nebiusBase}M = $${gpuCountProratedNebius.toFixed(2)}M`);
+      const defaultHourlyRate = 1940000000 / 365 / 76000 / 24;
+      const currentHourlyRate = gpuHourlyRates.hyperscaleBulkGB300;
+      const hourlyRateRatio = currentHourlyRate / defaultHourlyRate;
+      const gpuCountProratedNebius = (gpuCount / 100) * nebiusBase * hourlyRateRatio;
+      steps.push(`GPU Count Prorated Nebius Topline: (${gpuCount}k / 100k) × $${nebiusBase}M × ${hourlyRateRatio.toFixed(4)} = $${gpuCountProratedNebius.toFixed(2)}M`);
 
       // Improved Contracts Percentage (user input)
       const improvedPercentage = data.improvedContractsPercentage || 0;
@@ -537,7 +560,7 @@ function App() {
 
       // Additional Profit (5yrs)
       const additionalProfit5yrs = newRevenue - revenue;
-      steps.push(`Additional Profit (5yrs): New Negotiated Topline - Base Revenue = $${newRevenue.toFixed(2)}M - $${revenue.toFixed(2)}M = $${additionalProfit5yrs.toFixed(2)}M`);
+      steps.push(`Additional Profit (5yrs): New Negotiated Topline - Base Contract Revenue = $${newRevenue.toFixed(2)}M - $${revenue.toFixed(2)}M = $${additionalProfit5yrs.toFixed(2)}M`);
 
       // Additional Profit (annual)
       const additionalProfit = additionalProfit5yrs / 5;
@@ -549,7 +572,7 @@ function App() {
 
       // Update total revenue to include additional profit
       totalRevenue = revenue + additionalProfit5yrs;
-      steps.push(`Revenue: Base Revenue + Additional Profit (5yrs) = $${revenue.toFixed(2)}M + $${additionalProfit5yrs.toFixed(2)}M = $${totalRevenue.toFixed(2)}M`);
+      steps.push(`Revenue: Base Contract Revenue + Additional Profit (5yrs) = $${revenue.toFixed(2)}M + $${additionalProfit5yrs.toFixed(2)}M = $${totalRevenue.toFixed(2)}M`);
     }
 
     // Calculate annual revenue (divide total contract revenue by contract years)
@@ -916,7 +939,14 @@ function App() {
         </div>
 
         {/* GPU Prices */}
-        <GPUPrices prices={gpuPrices} setPrices={setGpuPrices} isOpen={gpuPricesOpen} setIsOpen={setGpuPricesOpen} />
+        <GPUPrices
+          prices={gpuPrices}
+          setPrices={setGpuPrices}
+          hourlyRates={gpuHourlyRates}
+          setHourlyRates={setGpuHourlyRates}
+          isOpen={gpuPricesOpen}
+          setIsOpen={setGpuPricesOpen}
+        />
 
         {/* Sites */}
         <div className="sites-section">
@@ -949,6 +979,7 @@ function App() {
                     site={site}
                     result={result}
                     gpuPrices={gpuPrices}
+                    gpuHourlyRates={gpuHourlyRates}
                     updateSite={updateSite}
                     toggleSite={toggleSite}
                     toggleAccordion={toggleSiteAccordion}
@@ -960,6 +991,7 @@ function App() {
                     site={site}
                     result={result}
                     gpuPrices={gpuPrices}
+                    gpuHourlyRates={gpuHourlyRates}
                     updateSite={updateSite}
                     toggleSite={toggleSite}
                     toggleAccordion={toggleSiteAccordion}
