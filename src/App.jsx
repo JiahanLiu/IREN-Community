@@ -58,12 +58,15 @@ function App() {
         retrofitCapexPerMW: 0,
         dcLifetime: 20,
         gpus: { b300: 9500, b200: 9600, mi350x: 1100, gb300: 1200, hyperscaleBulkGB300: 0 },
+        defaultDCITLoad: 45.45,
+        defaultGpus: { b300: 9500, b200: 9600, mi350x: 1100, gb300: 1200, hyperscaleBulkGB300: 0 },
+        autoscaleGPUs: true,
         gpuUsefulLife: 5,
         debtPercent: 0,
         interestRate: 7,
         debtYears: 5,
         residualValue: 0,
-        autoCalculateRevenue: false,
+        autoCalculateRevenue: true,
       }
     },
     {
@@ -85,12 +88,15 @@ function App() {
         retrofitCapexPerMW: 0,
         dcLifetime: 20,
         gpus: { b300: 19000, b200: 19200, mi350x: 2200, gb300: 2400, hyperscaleBulkGB300: 0 },
+        defaultDCITLoad: 100,
+        defaultGpus: { b300: 19000, b200: 19200, mi350x: 2200, gb300: 2400, hyperscaleBulkGB300: 0 },
+        autoscaleGPUs: true,
         gpuUsefulLife: 5,
         debtPercent: 0,
         interestRate: 7,
         debtYears: 5,
         residualValue: 0,
-        autoCalculateRevenue: false,
+        autoCalculateRevenue: true,
       }
     },
     {
@@ -108,6 +114,9 @@ function App() {
         pue: 1.5,
         revenueMode: 'direct',
         directGpuCount: 76,
+        defaultDCITLoad: 200,
+        defaultDirectGpuCount: 76,
+        autoscaleGPUs: true,
         toplineRevenue: 9700,
         contractYears: 5,
         ebitdaMargin: 85,
@@ -121,7 +130,7 @@ function App() {
         residualValue: 0,
         improvedContractsPercentage: 9.7 / 13.224 * 100,
         contractGapEnabled: false,
-        autoCalculateRevenue: false,
+        autoCalculateRevenue: true,
       }
     },
     {
@@ -138,6 +147,9 @@ function App() {
         itLoadUnit: 'MW',
         pue: 1.5,
         directGpuCount: 114,
+        defaultDCITLoad: 300,
+        defaultDirectGpuCount: 114,
+        autoscaleGPUs: true,
         toplineRevenue: 14544.47,
         contractYears: 5,
         ebitdaMargin: 85,
@@ -151,7 +163,7 @@ function App() {
         residualValue: 0,
         improvedContractsPercentage: 86,
         contractGapEnabled: true,
-        autoCalculateRevenue: false,
+        autoCalculateRevenue: true,
       }
     },
     {

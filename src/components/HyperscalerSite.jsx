@@ -1,9 +1,80 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 
 function HyperscalerSite({ site, result, gpuPrices, gpuHourlyRates, updateSite, toggleSite, toggleAccordion, deleteSite }) {
   const update = (field, value) => {
     updateSite(site.id, { [field]: value });
   };
+
+  // Calculate current DC IT Load in MW
+  const getCurrentDCITLoad = () => {
+    if (site.data.loadInputMode === 'total') {
+      const totalLoadMW = site.data.sizeUnit === 'GW'
+        ? site.data.sizeValue * 1000
+        : site.data.sizeValue;
+      return totalLoadMW / (site.data.pue || 1);
+    } else {
+      return site.data.itLoadUnit === 'GW'
+        ? (site.data.itLoad || 0) * 1000
+        : (site.data.itLoad || 0);
+    }
+  };
+
+  // Calculate scaled GPU count based on DC IT Load ratio
+  const calculateScaledGpuCount = () => {
+    const currentLoad = getCurrentDCITLoad();
+    const defaultLoad = site.data.defaultDCITLoad || currentLoad;
+    const ratio = defaultLoad > 0 ? currentLoad / defaultLoad : 1;
+
+    const defaultGpuCount = site.data.defaultDirectGpuCount ?? site.data.directGpuCount ?? 0;
+    return Math.floor(defaultGpuCount * ratio);
+  };
+
+  // Calculate scaled GPU counts for hardware mode 'gpus'
+  const calculateScaledGPUs = () => {
+    const currentLoad = getCurrentDCITLoad();
+    const defaultLoad = site.data.defaultDCITLoad || currentLoad;
+    const ratio = defaultLoad > 0 ? currentLoad / defaultLoad : 1;
+
+    const defaultGpus = site.data.defaultGpus || site.data.gpus || {};
+    return {
+      b300: Math.floor((defaultGpus.b300 || 0) * ratio),
+      b200: Math.floor((defaultGpus.b200 || 0) * ratio),
+      mi350x: Math.floor((defaultGpus.mi350x || 0) * ratio),
+      gb300: Math.floor((defaultGpus.gb300 || 0) * ratio),
+      hyperscaleBulkGB300: Math.floor((defaultGpus.hyperscaleBulkGB300 || 0) * ratio),
+    };
+  };
+
+  // Auto-scale GPU count when autoscale is enabled and load changes
+  useEffect(() => {
+    if (site.data.autoscaleGPUs) {
+      const scaledGpuCount = calculateScaledGpuCount();
+
+      // Update directGpuCount if it has changed
+      if (scaledGpuCount !== site.data.directGpuCount) {
+        if (site.data.autoCalculateRevenue) {
+          const revenueInMillions = calculateContractRevenue(scaledGpuCount, site.data.contractYears || 1);
+          updateSite(site.id, { directGpuCount: scaledGpuCount, toplineRevenue: revenueInMillions });
+        } else {
+          update('directGpuCount', scaledGpuCount);
+        }
+      }
+
+      // Also update GPUs if in 'gpus' hardware mode
+      if (site.data.hardwareMode === 'gpus') {
+        const scaledGpus = calculateScaledGPUs();
+        const currentGpus = site.data.gpus || {};
+        const gpusChanged = Object.keys(scaledGpus).some(
+          key => scaledGpus[key] !== (currentGpus[key] || 0)
+        );
+
+        if (gpusChanged) {
+          update('gpus', scaledGpus);
+        }
+      }
+    }
+  }, [site.data.autoscaleGPUs, site.data.loadInputMode, site.data.sizeValue, site.data.sizeUnit,
+      site.data.pue, site.data.itLoad, site.data.itLoadUnit]);
 
   const handleNumberChange = (field, value) => {
     update(field, value === '' ? '' : parseFloat(value));
@@ -84,6 +155,44 @@ function HyperscalerSite({ site, result, gpuPrices, gpuHourlyRates, updateSite, 
       updateSite(site.id, { autoCalculateRevenue: newAutoCalculate, toplineRevenue: revenueInMillions });
     } else {
       update('autoCalculateRevenue', newAutoCalculate);
+    }
+  };
+
+  const handleAutoscaleGPUsToggle = () => {
+    const newAutoscale = !site.data.autoscaleGPUs;
+
+    // If enabling autoscale, immediately calculate scaled values
+    if (newAutoscale) {
+      const scaledGpuCount = calculateScaledGpuCount();
+
+      // Also initialize default values if not set
+      const defaultLoad = site.data.defaultDCITLoad || getCurrentDCITLoad();
+      const defaultGpuCount = site.data.defaultDirectGpuCount ?? site.data.directGpuCount ?? 0;
+
+      const updates = {
+        autoscaleGPUs: newAutoscale,
+        directGpuCount: scaledGpuCount,
+        defaultDCITLoad: defaultLoad,
+        defaultDirectGpuCount: defaultGpuCount
+      };
+
+      // If using GPU hardware mode, also scale and save default GPUs
+      if (site.data.hardwareMode === 'gpus') {
+        const scaledGpus = calculateScaledGPUs();
+        const defaultGpus = site.data.defaultGpus || site.data.gpus || {};
+        updates.gpus = scaledGpus;
+        updates.defaultGpus = defaultGpus;
+      }
+
+      // If auto-calculate revenue is enabled, update revenue too
+      if (site.data.autoCalculateRevenue) {
+        const revenueInMillions = calculateContractRevenue(scaledGpuCount, site.data.contractYears || 1);
+        updates.toplineRevenue = revenueInMillions;
+      }
+
+      updateSite(site.id, updates);
+    } else {
+      update('autoscaleGPUs', newAutoscale);
     }
   };
 
@@ -214,12 +323,40 @@ function HyperscalerSite({ site, result, gpuPrices, gpuHourlyRates, updateSite, 
           )}
 
           <div className="input-row">
+            <label>Autoscale GPU Counts based on DC IT Load?</label>
+            <div className="radio-group">
+              <label>
+                <input
+                  type="radio"
+                  checked={site.data.autoscaleGPUs === true}
+                  onChange={() => handleAutoscaleGPUsToggle()}
+                />
+                Yes
+              </label>
+              <label>
+                <input
+                  type="radio"
+                  checked={site.data.autoscaleGPUs !== true}
+                  onChange={() => {
+                    if (site.data.autoscaleGPUs) {
+                      update('autoscaleGPUs', false);
+                    }
+                  }}
+                />
+                No
+              </label>
+            </div>
+          </div>
+
+          <div className="input-row">
             <label>Number of Hyperscale Bulk GB300 (thousands)</label>
             <input
               type="number"
               value={site.data.directGpuCount ?? 0}
               onChange={(e) => handleGpuCountChange('directGpuCount', e.target.value)}
               onBlur={(e) => handleGpuCountBlur('directGpuCount', e.target.value)}
+              disabled={site.data.autoscaleGPUs}
+              style={site.data.autoscaleGPUs ? { backgroundColor: '#f0f0f0', cursor: 'not-allowed' } : {}}
             />
           </div>
 
@@ -314,6 +451,8 @@ function HyperscalerSite({ site, result, gpuPrices, gpuHourlyRates, updateSite, 
                   value={site.data.gpus?.b300 ?? 0}
                   onChange={(e) => handleGpuChange('b300', e.target.value)}
                   onBlur={(e) => handleGpuBlur('b300', e.target.value)}
+                  disabled={site.data.autoscaleGPUs}
+                  style={site.data.autoscaleGPUs ? { backgroundColor: '#f0f0f0', cursor: 'not-allowed' } : {}}
                 />
               </div>
               <div className="input-row">
@@ -323,6 +462,8 @@ function HyperscalerSite({ site, result, gpuPrices, gpuHourlyRates, updateSite, 
                   value={site.data.gpus?.b200 ?? 0}
                   onChange={(e) => handleGpuChange('b200', e.target.value)}
                   onBlur={(e) => handleGpuBlur('b200', e.target.value)}
+                  disabled={site.data.autoscaleGPUs}
+                  style={site.data.autoscaleGPUs ? { backgroundColor: '#f0f0f0', cursor: 'not-allowed' } : {}}
                 />
               </div>
               <div className="input-row">
@@ -332,6 +473,8 @@ function HyperscalerSite({ site, result, gpuPrices, gpuHourlyRates, updateSite, 
                   value={site.data.gpus?.mi350x ?? 0}
                   onChange={(e) => handleGpuChange('mi350x', e.target.value)}
                   onBlur={(e) => handleGpuBlur('mi350x', e.target.value)}
+                  disabled={site.data.autoscaleGPUs}
+                  style={site.data.autoscaleGPUs ? { backgroundColor: '#f0f0f0', cursor: 'not-allowed' } : {}}
                 />
               </div>
               <div className="input-row">
@@ -341,6 +484,8 @@ function HyperscalerSite({ site, result, gpuPrices, gpuHourlyRates, updateSite, 
                   value={site.data.gpus?.gb300 ?? 0}
                   onChange={(e) => handleGpuChange('gb300', e.target.value)}
                   onBlur={(e) => handleGpuBlur('gb300', e.target.value)}
+                  disabled={site.data.autoscaleGPUs}
+                  style={site.data.autoscaleGPUs ? { backgroundColor: '#f0f0f0', cursor: 'not-allowed' } : {}}
                 />
               </div>
               <div className="input-row">
@@ -350,6 +495,8 @@ function HyperscalerSite({ site, result, gpuPrices, gpuHourlyRates, updateSite, 
                   value={site.data.gpus?.hyperscaleBulkGB300 ?? 0}
                   onChange={(e) => handleGpuChange('hyperscaleBulkGB300', e.target.value)}
                   onBlur={(e) => handleGpuBlur('hyperscaleBulkGB300', e.target.value)}
+                  disabled={site.data.autoscaleGPUs}
+                  style={site.data.autoscaleGPUs ? { backgroundColor: '#f0f0f0', cursor: 'not-allowed' } : {}}
                 />
               </div>
             </div>
