@@ -534,10 +534,8 @@ function HyperscalerSite({ site, result, gpuPrices, gpuHourlyRates, updateSite, 
             />
           </div>
 
-          <h4 style={{ marginTop: '1.5rem', marginBottom: '1rem', color: '#495057' }}>Contract Gap Closer to Nebius</h4>
-
           <div className="input-row">
-            <label>Enable Contract Gap Calculation</label>
+            <label>Improved Contract</label>
             <div
               className={`toggle-switch ${site.data.contractGapEnabled ? 'enabled' : ''}`}
               onClick={(e) => { e.stopPropagation(); update('contractGapEnabled', !site.data.contractGapEnabled); }}
@@ -548,24 +546,69 @@ function HyperscalerSite({ site, result, gpuPrices, gpuHourlyRates, updateSite, 
           </div>
 
           {site.data.contractGapEnabled && (
-            <div className="input-row">
-            <label>Improved Contracts Percentage as a Percentage of Nebius (%)</label>
-            <div style={{ width: '100%' }}>
-              <input
-                type="number"
-                min="73.35"
-                max="100"
-                step="0.01"
-                style={{ width: '100%' }}
-                value={site.data.improvedContractsPercentage ?? 0}
-                onChange={(e) => handleNumberChange('improvedContractsPercentage', e.target.value)}
-                onBlur={(e) => handleNumberBlur('improvedContractsPercentage', e.target.value, 0)}
-              />
-              <div style={{ fontSize: '0.875rem', color: '#6c757d', marginTop: '0.25rem', lineHeight: '1.4' }}>
-                The first IREN-MSFT Contract's Revenue was ~73.35% of NBIS-MSFT Contract's Revenue. We expect subsequent contracts to be better than ~73.35% because IREN's credibility and/or uptime track record will enable them to negotiate a better topline. The total cost of GPUs, hardware, DC and all operation cost is reflected in the items subtracted from Base Revenue and any additional revenue is profit. This percentage should be between 73.35% and 100%.
+            <>
+              <div className="input-row">
+                <label>Improvement Calculation Mode</label>
+                <div className="radio-group">
+                  <label>
+                    <input
+                      type="radio"
+                      checked={site.data.improvementMode === 'percentage'}
+                      onChange={() => update('improvementMode', 'percentage')}
+                    />
+                    Percentage of NBIS-MSFT
+                  </label>
+                  <label>
+                    <input
+                      type="radio"
+                      checked={site.data.improvementMode === 'direct' || !site.data.improvementMode}
+                      onChange={() => update('improvementMode', 'direct')}
+                    />
+                    Improvement Percentage
+                  </label>
+                </div>
               </div>
-            </div>
-          </div>
+
+              {site.data.improvementMode === 'percentage' && (
+                <div className="input-row">
+                  <label>Improved Contract as a Percentage of NBIS-MSFT (%)</label>
+                  <div style={{ width: '100%' }}>
+                    <input
+                      type="number"
+                      min="73.35"
+                      max="100"
+                      step="0.01"
+                      style={{ width: '100%' }}
+                      value={site.data.improvedContractsPercentage ?? 0}
+                      onChange={(e) => handleNumberChange('improvedContractsPercentage', e.target.value)}
+                      onBlur={(e) => handleNumberBlur('improvedContractsPercentage', e.target.value, 0)}
+                    />
+                    <div style={{ fontSize: '0.875rem', color: '#6c757d', marginTop: '0.25rem', lineHeight: '1.4' }}>
+                      The first IREN-MSFT Contract's Revenue was ~73.35% of NBIS-MSFT Contract's Revenue. We expect subsequent contracts to be better than ~73.35% because IREN's credibility and/or uptime track record will enable them to negotiate a better topline. The total cost of GPUs, hardware, DC and all operation cost is reflected in the items subtracted from Base Revenue and any additional revenue is profit. This percentage should be between 73.35% and 100%.
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {(site.data.improvementMode === 'direct' || !site.data.improvementMode) && (
+                <div className="input-row">
+                  <label>Improvement Percentage (%)</label>
+                  <div style={{ width: '100%' }}>
+                    <input
+                      type="number"
+                      step="0.01"
+                      style={{ width: '100%' }}
+                      value={site.data.directImprovement ?? 0}
+                      onChange={(e) => handleNumberChange('directImprovement', e.target.value)}
+                      onBlur={(e) => handleNumberBlur('directImprovement', e.target.value, 0)}
+                    />
+                    <div style={{ fontSize: '0.875rem', color: '#6c757d', marginTop: '0.25rem', lineHeight: '1.4' }}>
+                      Enter the improvement percentage relative to base contract revenue.
+                    </div>
+                  </div>
+                </div>
+              )}
+            </>
           )}
 
           <div className="calc-steps">

@@ -129,6 +129,8 @@ function App() {
         debtYears: 5,
         residualValue: 0,
         improvedContractsPercentage: 9.7 / 13.224 * 100,
+        directImprovement: 17.288288951,
+        improvementMode: 'direct',
         contractGapEnabled: false,
         autoCalculateRevenue: true,
       }
@@ -162,6 +164,8 @@ function App() {
         debtYears: 5,
         residualValue: 0,
         improvedContractsPercentage: 86,
+        directImprovement: 17.288288951,
+        improvementMode: 'direct',
         contractGapEnabled: true,
         autoCalculateRevenue: true,
       }
@@ -366,6 +370,8 @@ function App() {
         debtYears: 5,
         residualValue: 0,
         improvedContractsPercentage: 0,
+        directImprovement: 17.288288951,
+        improvementMode: 'direct',
         contractGapEnabled: false,
         autoCalculateRevenue: false,
       },
@@ -547,28 +553,41 @@ function App() {
     let netProfit = baseNetProfit;
     let totalRevenue = revenue; // Track total revenue (base + additional if applicable)
 
-    // Contract Gap Closer to Nebius (only if enabled)
+    // Improved Contract (only if enabled)
     if (data.contractGapEnabled) {
       steps.push(''); // Empty line for spacing
-      steps.push('--- Contract Gap Closer to Nebius ---');
+      steps.push('--- Improved Contract ---');
 
       // Get GPU count
       const gpuCount = data.directGpuCount || 0;
 
-      // GPU Count Prorated Nebius Topline with hourly rate adjustment
-      const nebiusBase = 17400; // $17.4B
-      const defaultHourlyRate = 1940000000 / 365 / 76000 / 24;
-      const currentHourlyRate = gpuHourlyRates.hyperscaleBulkGB300;
-      const hourlyRateRatio = currentHourlyRate / defaultHourlyRate;
-      const gpuCountProratedNebius = (gpuCount / 100000) * nebiusBase * hourlyRateRatio;
-      steps.push(`GPU Count Prorated Nebius Topline: (${gpuCount} / 100k) × $${nebiusBase}M × ${hourlyRateRatio.toFixed(4)} = $${gpuCountProratedNebius.toFixed(2)}M`);
+      let newRevenue;
 
-      // Improved Contracts Percentage (user input)
-      const improvedPercentage = data.improvedContractsPercentage || 0;
+      // Check improvement mode (default is 'direct')
+      if (data.improvementMode === 'percentage') {
+        // Percentage of NBIS-MSFT mode
+        // Nebius Topline Scaled by GPU Count with hourly rate adjustment
+        const nebiusBase = 17400; // $17.4B
+        const defaultHourlyRate = 1940000000 / 365 / 76000 / 24;
+        const currentHourlyRate = gpuHourlyRates.hyperscaleBulkGB300;
+        const hourlyRateRatio = currentHourlyRate / defaultHourlyRate;
+        const gpuCountProratedNebius = (gpuCount / 100000) * nebiusBase * hourlyRateRatio;
+        steps.push(`Nebius Topline Scaled by GPU Count: (${gpuCount} / 100k) × $${nebiusBase}M × ${hourlyRateRatio.toFixed(4)} = $${gpuCountProratedNebius.toFixed(2)}M`);
 
-      // New Negotiated Topline
-      const newRevenue = gpuCountProratedNebius * (improvedPercentage / 100);
-      steps.push(`New Negotiated Topline: $${gpuCountProratedNebius.toFixed(2)}M × ${improvedPercentage}% = $${newRevenue.toFixed(2)}M`);
+        // Improved Contracts Percentage (user input)
+        const improvedPercentage = data.improvedContractsPercentage || 0;
+
+        // New Negotiated Topline
+        newRevenue = gpuCountProratedNebius * (improvedPercentage / 100);
+        steps.push(`New Negotiated Topline: $${gpuCountProratedNebius.toFixed(2)}M × ${improvedPercentage}% = $${newRevenue.toFixed(2)}M`);
+      } else {
+        // Improvement Percentage mode (default)
+        const improvementPercentage = data.directImprovement || 0;
+
+        // New Negotiated Topline based on Base Contract Revenue
+        newRevenue = revenue * (1 + improvementPercentage / 100);
+        steps.push(`New Negotiated Topline: $${revenue.toFixed(2)}M × (1 + ${improvementPercentage}%) = $${newRevenue.toFixed(2)}M`);
+      }
 
       // Additional Profit (5yrs)
       const additionalProfit5yrs = newRevenue - revenue;
