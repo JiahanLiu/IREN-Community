@@ -1,6 +1,6 @@
 import React from 'react';
 
-function ColocationSite({ site, result, updateSite, toggleSite, toggleAccordion, deleteSite }) {
+function ColocationSite({ site, result, updateSite, updateSiteName, toggleSite, toggleAccordion, deleteSite }) {
   const update = (field, value) => {
     updateSite(site.id, { [field]: value });
   };
@@ -15,13 +15,6 @@ function ColocationSite({ site, result, updateSite, toggleSite, toggleAccordion,
 
   const isOpen = site.accordionOpen;
 
-  const updateName = (newName) => {
-    // Update the entire site object to change the name
-    const sites = JSON.parse(localStorage.getItem('sites') || '[]');
-    const updatedSites = sites.map(s => s.id === site.id ? { ...s, name: newName } : s);
-    localStorage.setItem('sites', JSON.stringify(updatedSites));
-  };
-
   return (
     <div className="accordion">
       <div className="accordion-header" onClick={() => toggleAccordion(site.id)}>
@@ -31,7 +24,7 @@ function ColocationSite({ site, result, updateSite, toggleSite, toggleAccordion,
             value={site.name}
             onChange={(e) => {
               e.stopPropagation();
-              // We need to update through parent
+              updateSiteName(site.id, e.target.value);
             }}
             onClick={(e) => e.stopPropagation()}
             className="site-name-input"

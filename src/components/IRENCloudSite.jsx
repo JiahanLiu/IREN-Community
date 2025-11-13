@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 
-function IRENCloudSite({ site, result, gpuPrices, gpuHourlyRates, updateSite, toggleSite, toggleAccordion, deleteSite }) {
+function IRENCloudSite({ site, result, gpuPrices, gpuHourlyRates, updateSite, updateSiteName, toggleSite, toggleAccordion, deleteSite }) {
   const [gpuCountsOpen, setGpuCountsOpen] = useState(false);
 
   const update = (field, value) => {
@@ -41,7 +41,7 @@ function IRENCloudSite({ site, result, gpuPrices, gpuHourlyRates, updateSite, to
   // Auto-scale GPUs when autoscale is enabled and load changes
   useEffect(() => {
     if (site.data.autoscaleGPUs) {
-      const scaledGpus = calculateScaledGPUs();
+      const scaledGpus = calculateScaledGPUs();""
 
       // Only update if GPUs have actually changed
       const currentGpus = site.data.gpus;
@@ -170,9 +170,12 @@ function IRENCloudSite({ site, result, gpuPrices, gpuHourlyRates, updateSite, to
           <input
             type="text"
             value={site.name}
+            onChange={(e) => {
+              e.stopPropagation();
+              updateSiteName(site.id, e.target.value);
+            }}
             onClick={(e) => e.stopPropagation()}
             className="site-name-input"
-            readOnly
           />
           <span className="site-type-badge">{site.type}</span>
           <div className="site-actions" onClick={(e) => e.stopPropagation()}>
@@ -328,6 +331,19 @@ function IRENCloudSite({ site, result, gpuPrices, gpuHourlyRates, updateSite, to
                     />
                   </div>
                 ))}
+
+                <div className="input-row">
+                  <label>Paid Off (%)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    max="100"
+                    step="1"
+                    value={site.data.gpuPaidOffPercent ?? 0}
+                    onChange={(e) => handleNumberChange('gpuPaidOffPercent', e.target.value)}
+                    onBlur={(e) => handleNumberBlur('gpuPaidOffPercent', e.target.value, 0)}
+                  />
+                </div>
               </>
             )}
           </div>
@@ -503,16 +519,6 @@ function IRENCloudSite({ site, result, gpuPrices, gpuHourlyRates, updateSite, to
               </div>
             </>
           )}
-
-          <div className="input-row">
-            <label>Percentage of GPU/Hardware Financed as Debt (%)</label>
-            <input
-              type="number"
-              value={site.data.debtPercent ?? 80}
-              onChange={(e) => handleNumberChange('debtPercent', e.target.value)}
-              onBlur={(e) => handleNumberBlur('debtPercent', e.target.value, 0)}
-            />
-          </div>
 
           <div className="input-row">
             <label>Interest Rate (%)</label>

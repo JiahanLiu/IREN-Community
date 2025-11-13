@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 
-function HyperscalerSite({ site, result, gpuPrices, gpuHourlyRates, updateSite, toggleSite, toggleAccordion, deleteSite }) {
+function HyperscalerSite({ site, result, gpuPrices, gpuHourlyRates, updateSite, updateSiteName, toggleSite, toggleAccordion, deleteSite }) {
   const [gpuCountsOpen, setGpuCountsOpen] = useState(false);
 
   const update = (field, value) => {
@@ -216,9 +216,12 @@ function HyperscalerSite({ site, result, gpuPrices, gpuHourlyRates, updateSite, 
           <input
             type="text"
             value={site.name}
+            onChange={(e) => {
+              e.stopPropagation();
+              updateSiteName(site.id, e.target.value);
+            }}
             onClick={(e) => e.stopPropagation()}
             className="site-name-input"
-            readOnly
           />
           <span className="site-type-badge">{site.type}</span>
           <div className="site-actions" onClick={(e) => e.stopPropagation()}>

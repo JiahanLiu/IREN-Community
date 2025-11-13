@@ -449,6 +449,78 @@
   box-shadow: 0 4px 15px rgba(113, 218, 128, 0.3);
 }
 
+/* Default Scenarios */
+.default-scenarios {
+  background: white;
+  border-radius: 12px;
+  padding: 2rem;
+  margin-bottom: 1.5rem;
+  box-shadow: 0 2px 15px rgba(0, 0, 0, 0.08);
+  border: 1px solid #e9ecef;
+}
+
+.default-scenarios h3 {
+  color: #1a1a1a;
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin-bottom: 1rem;
+}
+
+.scenario-btn {
+  padding: 1.25rem 2rem;
+  background: white;
+  color: #1a1a1a;
+  border: 2px solid #71DA80;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 0.95rem;
+  line-height: 1.4;
+  min-height: 75px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  white-space: normal;
+  max-width: fit-content;
+}
+
+.scenario-btn:hover {
+  background: #71DA80;
+  color: #1a1a1a;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 15px rgba(113, 218, 128, 0.3);
+}
+
+.scenario-btn.selected {
+  background: #71DA80;
+  color: #1a1a1a;
+  border-color: #5bc96b;
+  box-shadow: 0 2px 10px rgba(113, 218, 128, 0.3);
+}
+
+.scenario-btn.selected:hover {
+  background: #5bc96b;
+  box-shadow: 0 4px 15px rgba(113, 218, 128, 0.4);
+}
+
+.scenario-btn-multiline {
+  line-height: 1.4;
+}
+
+.control-btn.selected {
+  background: #71DA80;
+  color: #1a1a1a;
+  border-color: #5bc96b;
+  box-shadow: 0 2px 10px rgba(113, 218, 128, 0.3);
+}
+
+.control-btn.selected:hover {
+  background: #5bc96b;
+  box-shadow: 0 4px 15px rgba(113, 218, 128, 0.4);
+}
+
 /* Sites Section */
 .sites-section {
   margin-top: 2rem;

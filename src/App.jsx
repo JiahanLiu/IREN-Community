@@ -36,6 +36,20 @@ function App() {
   const [sgaExpense, setSgaExpense] = useState(138); // in millions
   const [shareParamsOpen, setShareParamsOpen] = useState(true);
   const [gpuPricesOpen, setGpuPricesOpen] = useState(false);
+  const [scenariosOpen, setScenariosOpen] = useState(true);
+  const [selectedScenario, setSelectedScenario] = useState('full'); // Track selected scenario
+  const [customScenarios, setCustomScenarios] = useState([]); // Custom user-created scenarios
+  const [showScenarioModal, setShowScenarioModal] = useState(false);
+  const [newScenarioName, setNewScenarioName] = useState('');
+
+  // Store parameters per scenario
+  const [scenarioParameters, setScenarioParameters] = useState({
+    'canada-only': { peRatio: 50, dilutionPercentage: 0 },
+    'canada-h14': { peRatio: 50, dilutionPercentage: 10 },
+    'full': { peRatio: 30, dilutionPercentage: 30 },
+    'half-colo-half-cloud': { peRatio: 30, dilutionPercentage: 50 },
+    'half-colo-half-iaas': { peRatio: 30, dilutionPercentage: 50 }
+  });
 
   // Sites data
   const [sites, setSites] = useState([
@@ -61,8 +75,9 @@ function App() {
         defaultDCITLoad: 50 / 1.1,
         defaultGpus: { b300: 9500, b200: 9600, mi350x: 1100, gb300: 1200, hyperscaleBulkGB300: 0 },
         autoscaleGPUs: true,
+        gpuPaidOffPercent: 25,
         gpuUsefulLife: 5,
-        debtPercent: 0,
+        debtPercent: 80,
         interestRate: 7,
         debtYears: 5,
         residualValue: 0,
@@ -91,8 +106,9 @@ function App() {
         defaultDCITLoad: 100,
         defaultGpus: { b300: 19000, b200: 19200, mi350x: 2200, gb300: 2400, hyperscaleBulkGB300: 0 },
         autoscaleGPUs: true,
+        gpuPaidOffPercent: 0,
         gpuUsefulLife: 5,
-        debtPercent: 0,
+        debtPercent: 80,
         interestRate: 7,
         debtYears: 5,
         residualValue: 0,
@@ -102,7 +118,7 @@ function App() {
     {
       id: 'horizon-1-4',
       name: 'Horizon 1-4',
-      type: 'Hyperscaler Tenant',
+      type: 'Hyperscaler IaaS',
       enabled: true,
       accordionOpen: true,
       data: {
@@ -138,7 +154,7 @@ function App() {
     {
       id: 'horizon-5-10',
       name: 'Horizon 5-10',
-      type: 'Hyperscaler Tenant',
+      type: 'Hyperscaler IaaS',
       enabled: true,
       accordionOpen: true,
       data: {
@@ -172,7 +188,7 @@ function App() {
     },
     {
       id: 'sweetwater-1',
-      name: 'Sweetwater 1',
+      name: 'Sweetwater 1: Colo',
       type: 'Colocation',
       enabled: true,
       accordionOpen: true,
@@ -189,8 +205,93 @@ function App() {
       }
     },
     {
+      id: 'sweetwater-1-colo-700',
+      name: 'Sweetwater 1: 700MW Colo',
+      type: 'Colocation',
+      enabled: false,
+      accordionOpen: true,
+      data: {
+        loadInputMode: 'total',
+        totalLoadValue: 700,
+        totalLoadUnit: 'MW',
+        itLoad: 466.67,
+        itLoadUnit: 'MW',
+        pue: 1.5,
+        revenuePerMW: 1.83,
+        dcCostPerMW: 15,
+        dcLifetime: 20,
+      }
+    },
+    {
+      id: 'sweetwater-1-iren-700',
+      name: 'Sweetwater 1: 700MW IREN Cloud',
+      type: 'IREN Cloud',
+      enabled: false,
+      accordionOpen: true,
+      data: {
+        toplineRevenue: 7000,
+        ebitdaMargin: 85,
+        dcType: 'new',
+        newDcType: 't2-liquid',
+        dcCostPerMW: 8,
+        loadInputMode: 'total',
+        sizeValue: 700,
+        sizeUnit: 'MW',
+        itLoad: 538.46,
+        itLoadUnit: 'MW',
+        pue: 1.3,
+        dcLifetime: 20,
+        gpus: { b300: 133000, b200: 134400, mi350x: 15400, gb300: 16800, hyperscaleBulkGB300: 0 },
+        defaultDCITLoad: 700 / 1.3,
+        defaultGpus: { b300: 133000, b200: 134400, mi350x: 15400, gb300: 16800, hyperscaleBulkGB300: 0 },
+        autoscaleGPUs: true,
+        gpuPaidOffPercent: 0,
+        gpuUsefulLife: 5,
+        debtPercent: 80,
+        interestRate: 7,
+        debtYears: 5,
+        residualValue: 0,
+        autoCalculateRevenue: true,
+      }
+    },
+    {
+      id: 'sweetwater-1-iaas-700',
+      name: 'Sweetwater 1: 700MW Hyperscaler IaaS',
+      type: 'Hyperscaler IaaS',
+      enabled: false,
+      accordionOpen: true,
+      data: {
+        loadInputMode: 'total',
+        sizeValue: 700,
+        sizeUnit: 'MW',
+        itLoad: 466.67,
+        itLoadUnit: 'MW',
+        pue: 1.5,
+        directGpuCount: 177000,
+        defaultDCITLoad: 466.67,
+        defaultDirectGpuCount: 177000,
+        autoscaleGPUs: true,
+        toplineRevenue: 22590,
+        contractYears: 5,
+        ebitdaMargin: 85,
+        hardwareMode: 'total',
+        totalHardwareCost: 5800 * 177 / 76,
+        dcCostPerMW: 15,
+        dcLifetime: 20,
+        prepaymentPercent: 20,
+        interestRate: 7,
+        debtYears: 5,
+        residualValue: 0,
+        improvedContractsPercentage: 86,
+        directImprovement: 20,
+        improvementMode: 'direct',
+        contractGapEnabled: true,
+        autoCalculateRevenue: true,
+      }
+    },
+    {
       id: 'sweetwater-2',
-      name: 'Sweetwater 2',
+      name: 'Sweetwater 2 Colo',
       type: 'Colocation',
       enabled: false,
       accordionOpen: true,
@@ -214,6 +315,12 @@ function App() {
     ));
   };
 
+  const updateSiteName = (id, newName) => {
+    setSites(sites.map(site =>
+      site.id === id ? { ...site, name: newName } : site
+    ));
+  };
+
   const toggleSite = (id) => {
     setSites(sites.map(site =>
       site.id === id ? { ...site, enabled: !site.enabled } : site
@@ -229,12 +336,14 @@ function App() {
   const expandAll = () => {
     setShareParamsOpen(true);
     setGpuPricesOpen(true);
+    setScenariosOpen(true);
     setSites(sites.map(site => ({ ...site, accordionOpen: true })));
   };
 
   const collapseAll = () => {
     setShareParamsOpen(false);
     setGpuPricesOpen(false);
+    setScenariosOpen(false);
     setSites(sites.map(site => ({ ...site, accordionOpen: false })));
   };
 
@@ -250,6 +359,8 @@ function App() {
       corporateTaxRate,
       taxAbatementRate,
       sgaExpense,
+      selectedScenario,
+      customScenarios,
       sites: sites.map(site => ({
         id: site.id,
         name: site.name,
@@ -312,6 +423,12 @@ function App() {
         if (data.taxAbatementRate !== undefined) setTaxAbatementRate(data.taxAbatementRate);
         if (data.sgaExpense !== undefined) setSgaExpense(data.sgaExpense);
 
+        // Update scenarios if present
+        if (data.selectedScenario !== undefined) setSelectedScenario(data.selectedScenario);
+        if (data.customScenarios && Array.isArray(data.customScenarios)) {
+          setCustomScenarios(data.customScenarios);
+        }
+
         // Update sites if present
         if (data.sites && Array.isArray(data.sites)) {
           setSites(data.sites.map(site => ({
@@ -329,6 +446,126 @@ function App() {
     };
     reader.readAsText(file);
     event.target.value = ''; // Reset file input
+  };
+
+  // Wrapper functions to update both global state and scenario-specific state
+  const updatePeRatio = (value) => {
+    setPeRatio(value);
+    setScenarioParameters(prev => ({
+      ...prev,
+      [selectedScenario]: { ...prev[selectedScenario], peRatio: value }
+    }));
+  };
+
+  const updateDilutionPercentage = (value) => {
+    setDilutionPercentage(value);
+    setScenarioParameters(prev => ({
+      ...prev,
+      [selectedScenario]: { ...prev[selectedScenario], dilutionPercentage: value }
+    }));
+  };
+
+  const loadScenario = (scenarioName) => {
+    setSelectedScenario(scenarioName); // Track the selected scenario
+
+    // Load parameters for this scenario
+    const params = scenarioParameters[scenarioName] || { peRatio: 30, dilutionPercentage: 30 };
+    setPeRatio(params.peRatio);
+    setDilutionPercentage(params.dilutionPercentage);
+
+    if (scenarioName === 'full') {
+      // Canada + Horizon 1-10 + SW1 Colo - H2 2027 (all sites enabled)
+      setSites(sites.map(site => ({
+        ...site,
+        enabled: site.id !== 'sweetwater-2' // Enable all except Sweetwater 2
+      })));
+    } else if (scenarioName === 'canada-h14') {
+      // Canada + Horizon 1-4 - Prince George, Mackenzie + Canal Flats, and Horizon 1-4 enabled
+      setSites(sites.map(site => ({
+        ...site,
+        enabled: site.id === 'prince-george' || site.id === 'mackenzie-canal' || site.id === 'horizon-1-4'
+      })));
+    } else if (scenarioName === 'canada-only') {
+      // Canada Only - Only Prince George and Mackenzie + Canal Flats enabled
+      setSites(sites.map(site => ({
+        ...site,
+        enabled: site.id === 'prince-george' || site.id === 'mackenzie-canal'
+      })));
+    } else if (scenarioName === 'half-colo-half-cloud') {
+      // Canada + Horizon 1-10 + SW1 Half Colo, Half IREN Cloud
+      setSites(sites.map(site => ({
+        ...site,
+        enabled: site.id === 'prince-george' ||
+                 site.id === 'mackenzie-canal' ||
+                 site.id === 'horizon-1-4' ||
+                 site.id === 'horizon-5-10' ||
+                 site.id === 'sweetwater-1-colo-700' ||
+                 site.id === 'sweetwater-1-iren-700'
+      })));
+    } else if (scenarioName === 'half-colo-half-iaas') {
+      // Canada + Horizon 1-10 + SW1 Half Colo, Half Hyperscaler IaaS
+      setSites(sites.map(site => ({
+        ...site,
+        enabled: site.id === 'prince-george' ||
+                 site.id === 'mackenzie-canal' ||
+                 site.id === 'horizon-1-4' ||
+                 site.id === 'horizon-5-10' ||
+                 site.id === 'sweetwater-1-colo-700' ||
+                 site.id === 'sweetwater-1-iaas-700'
+      })));
+    }
+  };
+
+  const saveCustomScenario = () => {
+    if (!newScenarioName.trim()) return;
+
+    const scenarioId = `custom-${Date.now()}`;
+    const newScenario = {
+      id: scenarioId,
+      name: newScenarioName.trim(),
+      peRatio: peRatio,
+      dilution: dilutionPercentage,
+      enabledSites: sites.filter(site => site.enabled).map(site => site.id)
+    };
+
+    // Save parameters for this custom scenario
+    setScenarioParameters(prev => ({
+      ...prev,
+      [scenarioId]: { peRatio: peRatio, dilutionPercentage: dilutionPercentage }
+    }));
+
+    setCustomScenarios([...customScenarios, newScenario]);
+    setShowScenarioModal(false);
+    setNewScenarioName('');
+  };
+
+  const deleteCustomScenario = (scenarioId) => {
+    setCustomScenarios(customScenarios.filter(s => s.id !== scenarioId));
+
+    // Remove parameters for this scenario
+    setScenarioParameters(prev => {
+      const { [scenarioId]: removed, ...rest } = prev;
+      return rest;
+    });
+
+    // If the deleted scenario was selected, switch to default
+    if (selectedScenario === scenarioId) {
+      loadScenario('full');
+    }
+  };
+
+  const loadCustomScenario = (scenario) => {
+    setSelectedScenario(scenario.id);
+
+    // Load parameters for this scenario
+    const params = scenarioParameters[scenario.id] || { peRatio: scenario.peRatio, dilutionPercentage: scenario.dilution };
+    setPeRatio(params.peRatio);
+    setDilutionPercentage(params.dilutionPercentage);
+
+    setSites(sites.map(site => ({
+      ...site,
+      enabled: scenario.enabledSites.includes(site.id)
+    })));
   };
 
   const deleteSite = (id) => {
@@ -349,7 +586,7 @@ function App() {
         dcCostPerMW: 15,
         dcLifetime: 20,
       },
-      'Hyperscaler Tenant': {
+      'Hyperscaler IaaS': {
         loadInputMode: 'total',
         sizeValue: 100,
         sizeUnit: 'MW',
@@ -387,13 +624,17 @@ function App() {
         pue: 1.1,
         retrofitCapexPerMW: 0,
         dcLifetime: 20,
-        gpus: { b300: 0, b200: 0, mi350x: 0, gb300: 0, hyperscaleBulkGB300: 0 },
+        gpus: { b300: 9500, b200: 9600, mi350x: 1100, gb300: 1200, hyperscaleBulkGB300: 0 },
+        defaultDCITLoad: 50 / 1.1,
+        defaultGpus: { b300: 9500, b200: 9600, mi350x: 1100, gb300: 1200, hyperscaleBulkGB300: 0 },
+        autoscaleGPUs: true,
+        gpuPaidOffPercent: 0,
         gpuUsefulLife: 5,
         debtPercent: 80,
         interestRate: 7,
         debtYears: 5,
         residualValue: 0,
-        autoCalculateRevenue: false,
+        autoCalculateRevenue: true,
       }
     };
 
@@ -413,7 +654,7 @@ function App() {
 
     if (site.type === 'Colocation') {
       return calculateColocationProfit(site.data);
-    } else if (site.type === 'Hyperscaler Tenant') {
+    } else if (site.type === 'Hyperscaler IaaS') {
       return calculateHyperscalerProfit(site.data);
     } else if (site.type === 'IREN Cloud') {
       return calculateIRENCloudProfit(site.data, gpuPrices);
@@ -623,13 +864,22 @@ function App() {
 
     // GPU depreciation
     const gpus = data.gpus || {};
-    const totalGpuCost =
+    const calculatedGpuCost =
       (gpus.b300 || 0) * prices.b300 / 1000000 +
       (gpus.b200 || 0) * prices.b200 / 1000000 +
       (gpus.mi350x || 0) * prices.mi350x / 1000000 +
       (gpus.gb300 || 0) * prices.gb300 / 1000000 +
       (gpus.hyperscaleBulkGB300 || 0) * prices.hyperscaleBulkGB300 / 1000000;
-    steps.push(`Total GPU Cost: $${totalGpuCost.toFixed(2)}M`);
+
+    // Apply paid off percentage: reduce cost by the paid off amount
+    const gpuPaidOffPercent = data.gpuPaidOffPercent ?? 0;
+    const totalGpuCost = calculatedGpuCost * (1 - gpuPaidOffPercent / 100);
+
+    if (gpuPaidOffPercent > 0) {
+      steps.push(`Total GPU Cost: $${calculatedGpuCost.toFixed(2)}M × (1 - ${gpuPaidOffPercent}%) = $${totalGpuCost.toFixed(2)}M`);
+    } else {
+      steps.push(`Total GPU Cost: $${totalGpuCost.toFixed(2)}M`);
+    }
 
     const gpuDepreciation = totalGpuCost / (data.gpuUsefulLife || 1);
     steps.push(`GPU Depreciation: $${totalGpuCost.toFixed(2)}M / ${(data.gpuUsefulLife || 1)} yrs = $${gpuDepreciation.toFixed(2)}M/yr`);
@@ -664,8 +914,8 @@ function App() {
     }
 
     // Interest calculation - Amortized Monthly Payments
-    const initialDebt = totalGpuCost * ((data.debtPercent || 0) / 100);
-    steps.push(`Initial Debt: $${totalGpuCost.toFixed(2)}M × ${(data.debtPercent || 0)}% = $${initialDebt.toFixed(2)}M`);
+    const initialDebt = totalGpuCost;
+    steps.push(`Initial Debt: $${initialDebt.toFixed(2)}M`);
 
     // Calculate monthly payment using amortization formula
     const annualRate = (data.interestRate || 0) / 100;
@@ -712,14 +962,33 @@ function App() {
     return { netProfit, revenue, steps };
   };
 
+  // Filter sites based on selected scenario
+  // Only show 700MW Sweetwater sites in the half-colo-half-cloud or half-colo-half-iaas scenarios
+  // Hide original Sweetwater 1 (1400MW) when in these scenarios
+  const activeSites = sites.filter(site => {
+    if (site.id === 'sweetwater-1-colo-700') {
+      return selectedScenario === 'half-colo-half-cloud' || selectedScenario === 'half-colo-half-iaas';
+    }
+    if (site.id === 'sweetwater-1-iren-700') {
+      return selectedScenario === 'half-colo-half-cloud';
+    }
+    if (site.id === 'sweetwater-1-iaas-700') {
+      return selectedScenario === 'half-colo-half-iaas';
+    }
+    if (site.id === 'sweetwater-1') {
+      return selectedScenario !== 'half-colo-half-cloud' && selectedScenario !== 'half-colo-half-iaas';
+    }
+    return true;
+  });
+
   // Calculate total annual revenue
-  const totalAnnualRevenue = sites.reduce((sum, site) => {
+  const totalAnnualRevenue = activeSites.reduce((sum, site) => {
     const result = calculateSiteNetProfit(site);
     return sum + result.revenue;
   }, 0);
 
   // Calculate total net profits
-  const totalNetProfit = sites.reduce((sum, site) => {
+  const totalNetProfit = activeSites.reduce((sum, site) => {
     const result = calculateSiteNetProfit(site);
     return sum + result.netProfit;
   }, 0);
@@ -796,7 +1065,7 @@ function App() {
 
           <div className="calc-steps">
             <div style={{ fontWeight: 'bold', marginBottom: '0.5rem' }}>Annual Revenue Split:</div>
-            {sites.filter(site => site.enabled).map(site => {
+            {activeSites.filter(site => site.enabled).map(site => {
               const result = calculateSiteNetProfit(site);
               return (
                 <div key={site.id}>
@@ -807,7 +1076,7 @@ function App() {
             <div style={{ marginTop: '0.5rem' }}>Total Annual Revenue = {formatValue(totalAnnualRevenue)}/yr</div>
 
             <div style={{ fontWeight: 'bold', marginTop: '1rem', marginBottom: '0.5rem' }}>Earnings before Tax, SG&A Split:</div>
-            {sites.filter(site => site.enabled).map(site => {
+            {activeSites.filter(site => site.enabled).map(site => {
               const result = calculateSiteNetProfit(site);
               return (
                 <div key={site.id}>
@@ -847,6 +1116,198 @@ function App() {
           </div>
         </div>
 
+        {/* Scenarios */}
+        <div className="accordion">
+          <div className="accordion-header" onClick={() => setScenariosOpen(!scenariosOpen)}>
+            <h3>Scenarios</h3>
+            <span className="accordion-icon">{scenariosOpen ? '−' : '+'}</span>
+          </div>
+
+          {scenariosOpen && (
+            <div className="accordion-content">
+              <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+            <button
+              onClick={() => loadScenario('canada-only')}
+              className={`scenario-btn ${selectedScenario === 'canada-only' ? 'selected' : ''}`}
+            >
+              <div>
+                <div>Canada</div>
+                <div>&nbsp;</div>
+              </div>
+            </button>
+            <button
+              onClick={() => loadScenario('canada-h14')}
+              className={`scenario-btn ${selectedScenario === 'canada-h14' ? 'selected' : ''}`}
+            >
+              <div>
+                <div>Canada +</div>
+                <div>Horizon 1-4</div>
+              </div>
+            </button>
+            <button
+              onClick={() => loadScenario('full')}
+              className={`scenario-btn ${selectedScenario === 'full' ? 'selected' : ''}`}
+            >
+              <div>
+                <div>Canada + Horizon 1-10</div>
+                <div>+ SW1 Colo</div>
+              </div>
+            </button>
+            <button
+              onClick={() => loadScenario('half-colo-half-iaas')}
+              className={`scenario-btn ${selectedScenario === 'half-colo-half-iaas' ? 'selected' : ''}`}
+            >
+              <div>
+                <div>Canada + Horizon 1-10 + SW1</div>
+                <div>Half Colo, Half Hyperscaler IaaS</div>
+              </div>
+            </button>
+            <button
+              onClick={() => loadScenario('half-colo-half-cloud')}
+              className={`scenario-btn ${selectedScenario === 'half-colo-half-cloud' ? 'selected' : ''}`}
+            >
+              <div>
+                <div>Canada + Horizon 1-10 + SW1</div>
+                <div>Half Colo, Half IREN Cloud</div>
+              </div>
+            </button>
+
+            {/* Custom Scenarios */}
+            {customScenarios.map(scenario => (
+              <button
+                key={scenario.id}
+                onClick={() => loadCustomScenario(scenario)}
+                className={`scenario-btn ${selectedScenario === scenario.id ? 'selected' : ''}`}
+                style={{ position: 'relative' }}
+              >
+                <div>
+                  <div>{scenario.name}</div>
+                  <div>&nbsp;</div>
+                </div>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    deleteCustomScenario(scenario.id);
+                  }}
+                  style={{
+                    position: 'absolute',
+                    top: '5px',
+                    right: '5px',
+                    background: '#dc3545',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '50%',
+                    width: '24px',
+                    height: '24px',
+                    cursor: 'pointer',
+                    fontSize: '14px',
+                    lineHeight: '1',
+                    padding: 0
+                  }}
+                  title="Delete scenario"
+                >
+                  ×
+                </button>
+              </button>
+            ))}
+
+            {/* Add Scenario Button */}
+            <button
+              onClick={() => setShowScenarioModal(true)}
+              className="scenario-btn"
+              style={{ borderStyle: 'dashed' }}
+            >
+              <div>
+                <div>+ Add Custom</div>
+                <div>Scenario</div>
+              </div>
+            </button>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Add Scenario Modal */}
+        {showScenarioModal && (
+          <div style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0,0,0,0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000
+          }}>
+            <div style={{
+              background: 'white',
+              padding: '2rem',
+              borderRadius: '12px',
+              maxWidth: '500px',
+              width: '90%',
+              boxShadow: '0 4px 20px rgba(0,0,0,0.3)'
+            }}>
+              <h3 style={{ marginTop: 0, color: '#1a1a1a' }}>Create Custom Scenario</h3>
+
+              <div style={{ marginBottom: '1.5rem' }}>
+                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>
+                  Scenario Name
+                </label>
+                <input
+                  type="text"
+                  value={newScenarioName}
+                  onChange={(e) => setNewScenarioName(e.target.value)}
+                  placeholder="Enter scenario name"
+                  style={{
+                    width: '100%',
+                    padding: '0.75rem',
+                    border: '2px solid #e9ecef',
+                    borderRadius: '8px',
+                    fontSize: '1rem'
+                  }}
+                />
+              </div>
+
+              <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
+                <button
+                  onClick={() => {
+                    setShowScenarioModal(false);
+                    setNewScenarioName('');
+                  }}
+                  style={{
+                    padding: '0.75rem 1.5rem',
+                    background: '#6c757d',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '8px',
+                    fontWeight: 600,
+                    cursor: 'pointer'
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={saveCustomScenario}
+                  disabled={!newScenarioName.trim()}
+                  style={{
+                    padding: '0.75rem 1.5rem',
+                    background: newScenarioName.trim() ? '#71DA80' : '#e9ecef',
+                    color: newScenarioName.trim() ? '#1a1a1a' : '#6c757d',
+                    border: 'none',
+                    borderRadius: '8px',
+                    fontWeight: 600,
+                    cursor: newScenarioName.trim() ? 'pointer' : 'not-allowed'
+                  }}
+                >
+                  Save Scenario
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Share Calculation Inputs */}
         <div className="accordion">
           <div className="accordion-header" onClick={() => setShareParamsOpen(!shareParamsOpen)}>
@@ -861,8 +1322,8 @@ function App() {
             <input
               type="number"
               value={peRatio}
-              onChange={(e) => setPeRatio(e.target.value === '' ? '' : parseFloat(e.target.value))}
-              onBlur={(e) => setPeRatio(e.target.value === '' ? 0 : parseFloat(e.target.value) || 0)}
+              onChange={(e) => updatePeRatio(e.target.value === '' ? '' : parseFloat(e.target.value))}
+              onBlur={(e) => updatePeRatio(e.target.value === '' ? 0 : parseFloat(e.target.value) || 0)}
             />
           </div>
 
@@ -908,7 +1369,7 @@ function App() {
                         // Calculate dilution percentage from direct shares
                         if (currentShares > 0) {
                           const calculatedDilution = ((directShares / currentShares) - 1) * 100;
-                          setDilutionPercentage(Math.max(0, calculatedDilution));
+                          updateDilutionPercentage(Math.max(0, calculatedDilution));
                         }
                       }}
                     />
@@ -946,8 +1407,8 @@ function App() {
                     <input
                       type="number"
                       value={dilutionPercentage}
-                      onChange={(e) => setDilutionPercentage(e.target.value === '' ? '' : parseFloat(e.target.value))}
-                      onBlur={(e) => setDilutionPercentage(e.target.value === '' ? 0 : parseFloat(e.target.value) || 0)}
+                      onChange={(e) => updateDilutionPercentage(e.target.value === '' ? '' : parseFloat(e.target.value))}
+                      onBlur={(e) => updateDilutionPercentage(e.target.value === '' ? 0 : parseFloat(e.target.value) || 0)}
                     />
                   </div>
                   <div className="calc-steps">
@@ -985,12 +1446,12 @@ function App() {
             <h3>Sites</h3>
             <div className="add-site-buttons">
               <button onClick={() => addSite('Colocation')}>+ Colocation</button>
-              <button onClick={() => addSite('Hyperscaler Tenant')}>+ Hyperscaler</button>
+              <button onClick={() => addSite('Hyperscaler IaaS')}>+ Hyperscaler IaaS</button>
               <button onClick={() => addSite('IREN Cloud')}>+ IREN Cloud</button>
             </div>
           </div>
 
-          {sites.map(site => {
+          {activeSites.map(site => {
             const result = calculateSiteNetProfit(site);
 
             return (
@@ -1000,18 +1461,20 @@ function App() {
                     site={site}
                     result={result}
                     updateSite={updateSite}
+                    updateSiteName={updateSiteName}
                     toggleSite={toggleSite}
                     toggleAccordion={toggleSiteAccordion}
                     deleteSite={deleteSite}
                   />
                 )}
-                {site.type === 'Hyperscaler Tenant' && (
+                {site.type === 'Hyperscaler IaaS' && (
                   <HyperscalerSite
                     site={site}
                     result={result}
                     gpuPrices={gpuPrices}
                     gpuHourlyRates={gpuHourlyRates}
                     updateSite={updateSite}
+                    updateSiteName={updateSiteName}
                     toggleSite={toggleSite}
                     toggleAccordion={toggleSiteAccordion}
                     deleteSite={deleteSite}
@@ -1024,6 +1487,7 @@ function App() {
                     gpuPrices={gpuPrices}
                     gpuHourlyRates={gpuHourlyRates}
                     updateSite={updateSite}
+                    updateSiteName={updateSiteName}
                     toggleSite={toggleSite}
                     toggleAccordion={toggleSiteAccordion}
                     deleteSite={deleteSite}

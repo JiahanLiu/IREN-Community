@@ -1,13 +1,13 @@
 # IREN Community | Financials
 
-A React-based financial analysis tool for IREN stock valuation. This application allows users to model and analyze various revenue streams including Colocation, Hyperscaler Tenant, and IREN Cloud operations.
+A React-based financial analysis tool for IREN stock valuation. This application allows users to model and analyze various revenue streams including Colocation, Hyperscaler IaaS, and IREN Cloud operations.
 
 ## Features
 
 - **Share Price Calculation**: Calculate share price based on Market Cap and Fully Diluted Shares
 - **Multiple Site Types**:
   - Colocation sites with customizable load, PUE, and revenue parameters
-  - Hyperscaler Tenant sites with contract modeling and GPU depreciation
+  - Hyperscaler IaaS sites with contract modeling and GPU depreciation
   - IREN Cloud sites with GPU deployment and datacenter cost analysis
 - **GPU Pricing**: Configurable pricing for various GPU types (GB300, B200, B300, MI350X)
 - **Contract Gap Analysis**: Model improvements in contract negotiations relative to Nebius benchmarks
@@ -77,7 +77,7 @@ iren-community/
 │   ├── components/
 │   │   ├── GPUPrices.jsx       # GPU pricing configuration
 │   │   ├── ColocationSite.jsx  # Colocation site component
-│   │   ├── HyperscalerSite.jsx # Hyperscaler Tenant component
+│   │   ├── HyperscalerSite.jsx # Hyperscaler IaaS component
 │   │   └── IRENCloudSite.jsx   # IREN Cloud component
 │   ├── App.jsx                  # Main application logic
 │   ├── App.css                  # Application styles

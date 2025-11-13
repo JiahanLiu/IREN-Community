@@ -10,13 +10,13 @@ describe('IREN Stock Analyzer - Default Inputs', () => {
     container = result.container;
   });
 
-  it('should display the correct share price of 193.48', () => {
+  it('should display the correct share price of 188.53', () => {
     // Find the share price display in the result-item
     const sharePrice = screen.getByText('Share Price');
     const sharePriceContainer = sharePrice.closest('.result-item');
 
-    // Check if the share price is 193.48
-    expect(sharePriceContainer).toHaveTextContent('$193.48');
+    // Check if the share price is 188.53
+    expect(sharePriceContainer).toHaveTextContent('$188.53');
   });
 
   it('should display correct Total Annual Revenue of 8.56B/yr', () => {
@@ -29,14 +29,14 @@ describe('IREN Stock Analyzer - Default Inputs', () => {
     expect(revenueContainer).toHaveTextContent('$8.56B/yr');
   });
 
-  it('should display correct Total Earnings before Tax, SG&A of 2.57B/yr', () => {
+  it('should display correct Total Earnings before Tax, SG&A of 2.51B/yr', () => {
     // Find the result-grid and get Earnings before Tax, SG&A from it
     const resultGrid = container.querySelector('.result-grid');
     const earnings = within(resultGrid).getByText('Earnings before Tax, SG&A');
     const earningsContainer = earnings.closest('.result-item');
 
-    // Check if the total earnings is 2.57B/yr
-    expect(earningsContainer).toHaveTextContent('$2.57B/yr');
+    // Check if the total earnings is 2.51B/yr
+    expect(earningsContainer).toHaveTextContent('$2.51B/yr');
   });
 
   it('should display correct Annual Revenue Split in calculation steps', () => {
@@ -48,7 +48,7 @@ describe('IREN Stock Analyzer - Default Inputs', () => {
     expect(calcSteps).toHaveTextContent('Mackenzie + Canal Flats: $1.00B/yr');
     expect(calcSteps).toHaveTextContent('Horizon 1-4: $1.94B/yr');
     expect(calcSteps).toHaveTextContent('Horizon 5-10: $3.41B/yr');
-    expect(calcSteps).toHaveTextContent('Sweetwater 1: $1.71B/yr');
+    expect(calcSteps).toHaveTextContent('Sweetwater 1: Colo: $1.71B/yr');
     expect(calcSteps).toHaveTextContent('Total Annual Revenue = $8.56B/yr');
   });
 
@@ -57,24 +57,24 @@ describe('IREN Stock Analyzer - Default Inputs', () => {
     const calcSteps = container.querySelector('.calc-steps');
 
     // Verify all earnings values are present
-    expect(calcSteps).toHaveTextContent('Prince George: $192M/yr');
-    expect(calcSteps).toHaveTextContent('Mackenzie + Canal Flats: $384M/yr');
+    expect(calcSteps).toHaveTextContent('Prince George: $217M/yr');
+    expect(calcSteps).toHaveTextContent('Mackenzie + Canal Flats: $296M/yr');
     expect(calcSteps).toHaveTextContent('Horizon 1-4: $194M/yr');
     expect(calcSteps).toHaveTextContent('Horizon 5-10: $793M/yr');
-    expect(calcSteps).toHaveTextContent('Sweetwater 1: $1.01B/yr');
-    expect(calcSteps).toHaveTextContent('Total Earnings before Tax, SG&A = $2.57B/yr');
+    expect(calcSteps).toHaveTextContent('Sweetwater 1: Colo: $1.01B/yr');
+    expect(calcSteps).toHaveTextContent('Total Earnings before Tax, SG&A = $2.51B/yr');
   });
 
   it('should verify Prince George revenue and earnings', () => {
     const calcSteps = container.querySelector('.calc-steps');
     expect(calcSteps).toHaveTextContent('Prince George: $500M/yr');
-    expect(calcSteps).toHaveTextContent('Prince George: $192M/yr');
+    expect(calcSteps).toHaveTextContent('Prince George: $217M/yr');
   });
 
   it('should verify Mackenzie + Canal Flats revenue and earnings', () => {
     const calcSteps = container.querySelector('.calc-steps');
     expect(calcSteps).toHaveTextContent('Mackenzie + Canal Flats: $1.00B/yr');
-    expect(calcSteps).toHaveTextContent('Mackenzie + Canal Flats: $384M/yr');
+    expect(calcSteps).toHaveTextContent('Mackenzie + Canal Flats: $296M/yr');
   });
 
   it('should verify Horizon 1-4 revenue and earnings', () => {
@@ -91,8 +91,8 @@ describe('IREN Stock Analyzer - Default Inputs', () => {
 
   it('should verify Sweetwater 1 revenue and earnings', () => {
     const calcSteps = container.querySelector('.calc-steps');
-    expect(calcSteps).toHaveTextContent('Sweetwater 1: $1.71B/yr');
-    expect(calcSteps).toHaveTextContent('Sweetwater 1: $1.01B/yr');
+    expect(calcSteps).toHaveTextContent('Sweetwater 1: Colo: $1.71B/yr');
+    expect(calcSteps).toHaveTextContent('Sweetwater 1: Colo: $1.01B/yr');
   });
 
   it('should have all 5 sites enabled by default', () => {
@@ -101,9 +101,9 @@ describe('IREN Stock Analyzer - Default Inputs', () => {
     expect(enabledToggles.length).toBeGreaterThanOrEqual(5);
   });
 
-  it('should display Market Cap of 70.68B', () => {
+  it('should display Market Cap of 68.87B', () => {
     const marketCap = screen.getByText('Market Cap');
     const marketCapContainer = marketCap.closest('.result-item');
-    expect(marketCapContainer).toHaveTextContent('$70.68B');
+    expect(marketCapContainer).toHaveTextContent('$68.87B');
   });
 });
