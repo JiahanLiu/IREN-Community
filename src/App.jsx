@@ -28,7 +28,7 @@ function App() {
   // Share calculation inputs
   const [useDirectSharesInput, setUseDirectSharesInput] = useState(false);
   const [directShares, setDirectShares] = useState(365.3); // in millions
-  const [currentShares, setCurrentShares] = useState(281); // in millions
+  const [currentShares, setCurrentShares] = useState(352.7); // in millions
   const [dilutionPercentage, setDilutionPercentage] = useState(30);
   const [peRatio, setPeRatio] = useState(30);
   const [corporateTaxRate, setCorporateTaxRate] = useState(21); // percentage
@@ -44,11 +44,11 @@ function App() {
 
   // Store parameters per scenario
   const [scenarioParameters, setScenarioParameters] = useState({
-    'canada-only': { peRatio: 50, dilutionPercentage: 0 },
-    'canada-h14': { peRatio: 50, dilutionPercentage: 10 },
-    'full': { peRatio: 30, dilutionPercentage: 30 },
-    'half-colo-half-cloud': { peRatio: 30, dilutionPercentage: 50 },
-    'half-colo-half-iaas': { peRatio: 30, dilutionPercentage: 50 }
+    'canada-only': { peRatio: 50, dilutionPercentage: 0, currentShares: 352.7 },
+    'canada-h14': { peRatio: 50, dilutionPercentage: 0, currentShares: 352.7 },
+    'full': { peRatio: 30, dilutionPercentage: 30, currentShares: 409.126 },
+    'half-colo-half-cloud': { peRatio: 30, dilutionPercentage: 30, currentShares: 409.126 },
+    'half-colo-half-iaas': { peRatio: 30, dilutionPercentage: 30, currentShares: 409.126 }
   });
 
   // Sites data
@@ -199,7 +199,7 @@ function App() {
         itLoad: 933.33,
         itLoadUnit: 'MW',
         pue: 1.5,
-        revenuePerMW: 1.83,
+        revenuePerMW: 2.18,
         dcCostPerMW: 15,
         dcLifetime: 20,
       }
@@ -217,7 +217,7 @@ function App() {
         itLoad: 466.67,
         itLoadUnit: 'MW',
         pue: 1.5,
-        revenuePerMW: 1.83,
+        revenuePerMW: 2.18,
         dcCostPerMW: 15,
         dcLifetime: 20,
       }
@@ -232,8 +232,8 @@ function App() {
         toplineRevenue: 7000,
         ebitdaMargin: 85,
         dcType: 'new',
-        newDcType: 't2-liquid',
-        dcCostPerMW: 8,
+        newDcType: 't3-liquid',
+        dcCostPerMW: 15,
         loadInputMode: 'total',
         sizeValue: 700,
         sizeUnit: 'MW',
@@ -465,13 +465,22 @@ function App() {
     }));
   };
 
+  const updateCurrentShares = (value) => {
+    setCurrentShares(value);
+    setScenarioParameters(prev => ({
+      ...prev,
+      [selectedScenario]: { ...prev[selectedScenario], currentShares: value }
+    }));
+  };
+
   const loadScenario = (scenarioName) => {
     setSelectedScenario(scenarioName); // Track the selected scenario
 
     // Load parameters for this scenario
-    const params = scenarioParameters[scenarioName] || { peRatio: 30, dilutionPercentage: 30 };
+    const params = scenarioParameters[scenarioName] || { peRatio: 30, dilutionPercentage: 30, currentShares: 352.7 };
     setPeRatio(params.peRatio);
     setDilutionPercentage(params.dilutionPercentage);
+    setCurrentShares(params.currentShares);
 
     if (scenarioName === 'full') {
       // Canada + Horizon 1-10 + SW1 Colo - H2 2027 (all sites enabled)
@@ -525,13 +534,14 @@ function App() {
       name: newScenarioName.trim(),
       peRatio: peRatio,
       dilution: dilutionPercentage,
+      currentShares: currentShares,
       enabledSites: sites.filter(site => site.enabled).map(site => site.id)
     };
 
     // Save parameters for this custom scenario
     setScenarioParameters(prev => ({
       ...prev,
-      [scenarioId]: { peRatio: peRatio, dilutionPercentage: dilutionPercentage }
+      [scenarioId]: { peRatio: peRatio, dilutionPercentage: dilutionPercentage, currentShares: currentShares }
     }));
 
     setCustomScenarios([...customScenarios, newScenario]);
@@ -558,9 +568,10 @@ function App() {
     setSelectedScenario(scenario.id);
 
     // Load parameters for this scenario
-    const params = scenarioParameters[scenario.id] || { peRatio: scenario.peRatio, dilutionPercentage: scenario.dilution };
+    const params = scenarioParameters[scenario.id] || { peRatio: scenario.peRatio, dilutionPercentage: scenario.dilution, currentShares: 352.7 };
     setPeRatio(params.peRatio);
     setDilutionPercentage(params.dilutionPercentage);
+    setCurrentShares(params.currentShares);
 
     setSites(sites.map(site => ({
       ...site,
@@ -1398,8 +1409,8 @@ function App() {
                     <input
                       type="number"
                       value={currentShares}
-                      onChange={(e) => setCurrentShares(e.target.value === '' ? '' : parseFloat(e.target.value))}
-                      onBlur={(e) => setCurrentShares(e.target.value === '' ? 0 : parseFloat(e.target.value) || 0)}
+                      onChange={(e) => updateCurrentShares(e.target.value === '' ? '' : parseFloat(e.target.value))}
+                      onBlur={(e) => updateCurrentShares(e.target.value === '' ? 0 : parseFloat(e.target.value) || 0)}
                     />
                   </div>
                   <div className="input-row">
