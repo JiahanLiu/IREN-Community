@@ -6,7 +6,13 @@ function GPUPrices({ prices, setPrices, hourlyRates, setHourlyRates, isOpen, set
   const [newGpuHourlyRate, setNewGpuHourlyRate] = useState('');
 
   // Define default GPU types that cannot be deleted
-  const defaultGpuTypes = ['b200', 'b300', 'gb300', 'mi350x', 'hyperscaleBulkGB300'];
+  const defaultGpuTypes = ['b200', 'b300', 'gb300', 'mi350x', 'hyperscaleBulkGB300', 'veraRubinNVL144'];
+
+  // Display name mapping for GPU types
+  const displayNames = {
+    'hyperscaleBulkGB300': 'Hyperscale Bulk GB300',
+    'veraRubinNVL144': 'Hyperscale Bulk Vera Rubin NVL144'
+  };
 
   const updatePrice = (key, value) => {
     setPrices({ ...prices, [key]: value === '' ? '' : parseFloat(value) });
@@ -84,7 +90,7 @@ function GPUPrices({ prices, setPrices, hourlyRates, setHourlyRates, isOpen, set
             const isDefault = defaultGpuTypes.includes(key);
             return (
               <div key={key} className="input-row" style={{ gridTemplateColumns: '250px 1fr 1fr 60px', display: 'grid', gap: '1rem', alignItems: 'center' }}>
-                <label style={{ textTransform: 'uppercase' }}>{key.replace(/([A-Z])/g, ' $1').trim()}</label>
+                <label>{displayNames[key] || key.replace(/([A-Z])/g, ' $1').trim().toUpperCase()}</label>
                 <input
                   type="number"
                   value={prices[key]}

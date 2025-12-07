@@ -6,10 +6,21 @@ import HyperscalerSite from './components/HyperscalerSite';
 import IRENCloudSite from './components/IRENCloudSite';
 import packageJson from '../package.json';
 
+// Default scenario configuration
+const DEFAULT_SCENARIO = '2026-h18-sw1';
+const DEFAULT_SCENARIO_PARAMS = {
+  'canada': { peRatio: 50, dilutionPercentage: 0, currentShares: 352.7 },
+  'canada-h14': { peRatio: 50, dilutionPercentage: 0, currentShares: 352.7 },
+  '2027-h110-colo': { peRatio: 30, dilutionPercentage: 15, currentShares: 409.126 },
+  '2027-h110-hyperscaler': { peRatio: 30, dilutionPercentage: 60, currentShares: 409.126 },
+  '2026-h18-sw1': { peRatio: 40, dilutionPercentage: 15, currentShares: 409.126 }
+};
+
 function App() {
   // GPU Prices
   const [gpuPrices, setGpuPrices] = useState({
     hyperscaleBulkGB300: 76315.78,
+    veraRubinNVL144: 76315.78 * 1.5,
     gb300: 80000,
     b200: 45952.38,
     b300: 61117.21,
@@ -23,33 +34,28 @@ function App() {
     gb300: 500000000 / 661169760 * 5.11,
     mi350x: 500000000 / 661169760 * 2.91,
     hyperscaleBulkGB300: 1940000000 / 365 / 76000 / 24,
+    veraRubinNVL144: 1940000000 / 365 / 76000 / 24 * 1.75,
   });
 
   // Share calculation inputs
   const [useDirectSharesInput, setUseDirectSharesInput] = useState(false);
   const [directShares, setDirectShares] = useState(365.3); // in millions
-  const [currentShares, setCurrentShares] = useState(352.7); // in millions
-  const [dilutionPercentage, setDilutionPercentage] = useState(30);
-  const [peRatio, setPeRatio] = useState(30);
+  const [currentShares, setCurrentShares] = useState(DEFAULT_SCENARIO_PARAMS[DEFAULT_SCENARIO].currentShares); // in millions
+  const [dilutionPercentage, setDilutionPercentage] = useState(DEFAULT_SCENARIO_PARAMS[DEFAULT_SCENARIO].dilutionPercentage);
+  const [peRatio, setPeRatio] = useState(DEFAULT_SCENARIO_PARAMS[DEFAULT_SCENARIO].peRatio);
   const [corporateTaxRate, setCorporateTaxRate] = useState(21); // percentage
   const [taxAbatementRate, setTaxAbatementRate] = useState(85); // percentage
   const [sgaExpense, setSgaExpense] = useState(138); // in millions
   const [shareParamsOpen, setShareParamsOpen] = useState(true);
   const [gpuPricesOpen, setGpuPricesOpen] = useState(false);
   const [scenariosOpen, setScenariosOpen] = useState(true);
-  const [selectedScenario, setSelectedScenario] = useState('full'); // Track selected scenario
+  const [selectedScenario, setSelectedScenario] = useState(DEFAULT_SCENARIO); // Track selected scenario
   const [customScenarios, setCustomScenarios] = useState([]); // Custom user-created scenarios
   const [showScenarioModal, setShowScenarioModal] = useState(false);
   const [newScenarioName, setNewScenarioName] = useState('');
 
   // Store parameters per scenario
-  const [scenarioParameters, setScenarioParameters] = useState({
-    'canada-only': { peRatio: 50, dilutionPercentage: 0, currentShares: 352.7 },
-    'canada-h14': { peRatio: 50, dilutionPercentage: 0, currentShares: 352.7 },
-    'full': { peRatio: 30, dilutionPercentage: 30, currentShares: 409.126 },
-    'half-colo-half-cloud': { peRatio: 30, dilutionPercentage: 30, currentShares: 409.126 },
-    'half-colo-half-iaas': { peRatio: 30, dilutionPercentage: 30, currentShares: 409.126 }
-  });
+  const [scenarioParameters, setScenarioParameters] = useState({...DEFAULT_SCENARIO_PARAMS});
 
   // Sites data
   const [sites, setSites] = useState([
@@ -136,7 +142,7 @@ function App() {
         toplineRevenue: 9700,
         contractYears: 5,
         ebitdaMargin: 85,
-        hardwareMode: 'total',
+        hardwareMode: 'gpus',
         totalHardwareCost: 5800,
         dcCostPerMW: 15,
         dcLifetime: 20,
@@ -155,7 +161,7 @@ function App() {
       id: 'horizon-5-10',
       name: 'Horizon 5-10',
       type: 'Hyperscaler IaaS',
-      enabled: true,
+      enabled: false,
       accordionOpen: true,
       data: {
         loadInputMode: 'total',
@@ -171,7 +177,7 @@ function App() {
         toplineRevenue: 14544.47,
         contractYears: 5,
         ebitdaMargin: 85,
-        hardwareMode: 'total',
+        hardwareMode: 'gpus',
         totalHardwareCost: 5800 * 114 / 76,
         dcCostPerMW: 15,
         dcLifetime: 20,
@@ -187,10 +193,45 @@ function App() {
       }
     },
     {
-      id: 'sweetwater-1',
-      name: 'Sweetwater 1: Colo',
-      type: 'Colocation',
+      id: 'horizon-5-8',
+      name: 'Horizon 5-8',
+      type: 'Hyperscaler IaaS',
       enabled: true,
+      accordionOpen: true,
+      data: {
+        loadInputMode: 'total',
+        sizeValue: 300,
+        sizeUnit: 'MW',
+        itLoad: 200,
+        itLoadUnit: 'MW',
+        pue: 1.5,
+        directGpuCount: 92000,
+        defaultDCITLoad: 200,
+        defaultDirectGpuCount: 92000,
+        autoscaleGPUs: true,
+        toplineRevenue: 11742.11,
+        contractYears: 5,
+        ebitdaMargin: 85,
+        hardwareMode: 'gpus',
+        totalHardwareCost: 7021.05,
+        dcCostPerMW: 15,
+        dcLifetime: 20,
+        prepaymentPercent: 20,
+        interestRate: 7,
+        debtYears: 5,
+        residualValue: 0,
+        improvedContractsPercentage: 86,
+        directImprovement: 17.288288951,
+        improvementMode: 'direct',
+        contractGapEnabled: true,
+        autoCalculateRevenue: true,
+      }
+    },
+    {
+      id: 'sweetwater-1',
+      name: 'SW1: Colo',
+      type: 'Colocation',
+      enabled: false,
       accordionOpen: true,
       data: {
         loadInputMode: 'total',
@@ -205,77 +246,27 @@ function App() {
       }
     },
     {
-      id: 'sweetwater-1-colo-700',
-      name: 'Sweetwater 1: 700MW Colo',
-      type: 'Colocation',
-      enabled: false,
-      accordionOpen: true,
-      data: {
-        loadInputMode: 'total',
-        totalLoadValue: 700,
-        totalLoadUnit: 'MW',
-        itLoad: 466.67,
-        itLoadUnit: 'MW',
-        pue: 1.5,
-        revenuePerMW: 2.18,
-        dcCostPerMW: 15,
-        dcLifetime: 20,
-      }
-    },
-    {
-      id: 'sweetwater-1-iren-700',
-      name: 'Sweetwater 1: 700MW IREN Cloud',
-      type: 'IREN Cloud',
-      enabled: false,
-      accordionOpen: true,
-      data: {
-        toplineRevenue: 7000,
-        ebitdaMargin: 85,
-        dcType: 'new',
-        newDcType: 't3-liquid',
-        dcCostPerMW: 15,
-        loadInputMode: 'total',
-        sizeValue: 700,
-        sizeUnit: 'MW',
-        itLoad: 538.46,
-        itLoadUnit: 'MW',
-        pue: 1.3,
-        dcLifetime: 20,
-        gpus: { b300: 133000, b200: 134400, mi350x: 15400, gb300: 16800, hyperscaleBulkGB300: 0 },
-        defaultDCITLoad: 700 / 1.3,
-        defaultGpus: { b300: 133000, b200: 134400, mi350x: 15400, gb300: 16800, hyperscaleBulkGB300: 0 },
-        autoscaleGPUs: true,
-        gpuPaidOffPercent: 0,
-        gpuUsefulLife: 5,
-        debtPercent: 80,
-        interestRate: 7,
-        debtYears: 5,
-        residualValue: 0,
-        autoCalculateRevenue: true,
-      }
-    },
-    {
-      id: 'sweetwater-1-iaas-700',
-      name: 'Sweetwater 1: 700MW Hyperscaler IaaS',
+      id: 'sweetwater-1-300mw',
+      name: 'SW1: 300MW Hyperscaler',
       type: 'Hyperscaler IaaS',
-      enabled: false,
+      enabled: true,
       accordionOpen: true,
       data: {
         loadInputMode: 'total',
-        sizeValue: 700,
+        sizeValue: 300,
         sizeUnit: 'MW',
-        itLoad: 466.67,
+        itLoad: 200,
         itLoadUnit: 'MW',
         pue: 1.5,
-        directGpuCount: 177000,
-        defaultDCITLoad: 466.67,
-        defaultDirectGpuCount: 177000,
+        directGpuCount: 92000,
+        defaultDCITLoad: 200,
+        defaultDirectGpuCount: 92000,
         autoscaleGPUs: true,
-        toplineRevenue: 22590,
+        toplineRevenue: 11742.11,
         contractYears: 5,
         ebitdaMargin: 85,
-        hardwareMode: 'total',
-        totalHardwareCost: 5800 * 177 / 76,
+        hardwareMode: 'gpus',
+        totalHardwareCost: 7021.05,
         dcCostPerMW: 15,
         dcLifetime: 20,
         prepaymentPercent: 20,
@@ -283,7 +274,44 @@ function App() {
         debtYears: 5,
         residualValue: 0,
         improvedContractsPercentage: 86,
-        directImprovement: 20,
+        directImprovement: 17.288288951,
+        improvementMode: 'direct',
+        contractGapEnabled: true,
+        autoCalculateRevenue: true,
+      }
+    },
+    {
+      id: 'sweetwater-1-1400mw',
+      name: 'SW1: 1400MW Hyperscaler',
+      type: 'Hyperscaler IaaS',
+      enabled: false,
+      accordionOpen: true,
+      data: {
+        loadInputMode: 'total',
+        sizeValue: 1400,
+        sizeUnit: 'MW',
+        itLoad: 933.33,
+        itLoadUnit: 'MW',
+        pue: 1.5,
+        directGpuCount: 0,
+        veraRubinGpuCount: 300427,
+        defaultDCITLoad: 933.33,
+        defaultDirectGpuCount: 0,
+        defaultVeraRubinGpuCount: 300427,
+        autoscaleGPUs: true,
+        toplineRevenue: 54775,
+        contractYears: 5,
+        ebitdaMargin: 85,
+        hardwareMode: 'gpus',
+        totalHardwareCost: 5800 * 429.18 / 76,
+        dcCostPerMW: 15,
+        dcLifetime: 20,
+        prepaymentPercent: 20,
+        interestRate: 7,
+        debtYears: 5,
+        residualValue: 0,
+        improvedContractsPercentage: 86,
+        directImprovement: 17.288288951,
         improvementMode: 'direct',
         contractGapEnabled: true,
         autoCalculateRevenue: true,
@@ -482,7 +510,7 @@ function App() {
     setDilutionPercentage(params.dilutionPercentage);
     setCurrentShares(params.currentShares);
 
-    if (scenarioName === 'full') {
+    if (scenarioName === '2027-h110-colo') {
       // Canada + Horizon 1-10 + SW1 Colo - H2 2027 (all sites enabled)
       setSites(sites.map(site => ({
         ...site,
@@ -494,33 +522,31 @@ function App() {
         ...site,
         enabled: site.id === 'prince-george' || site.id === 'mackenzie-canal' || site.id === 'horizon-1-4'
       })));
-    } else if (scenarioName === 'canada-only') {
+    } else if (scenarioName === 'canada') {
       // Canada Only - Only Prince George and Mackenzie + Canal Flats enabled
       setSites(sites.map(site => ({
         ...site,
         enabled: site.id === 'prince-george' || site.id === 'mackenzie-canal'
       })));
-    } else if (scenarioName === 'half-colo-half-cloud') {
-      // Canada + Horizon 1-10 + SW1 Half Colo, Half IREN Cloud
+    } else if (scenarioName === '2027-h110-hyperscaler') {
+      // Canada + Horizon 1-10 + SW1 1400MW Hyperscaler
       setSites(sites.map(site => ({
         ...site,
         enabled: site.id === 'prince-george' ||
                  site.id === 'mackenzie-canal' ||
                  site.id === 'horizon-1-4' ||
                  site.id === 'horizon-5-10' ||
-                 site.id === 'sweetwater-1-colo-700' ||
-                 site.id === 'sweetwater-1-iren-700'
+                 site.id === 'sweetwater-1-1400mw'
       })));
-    } else if (scenarioName === 'half-colo-half-iaas') {
-      // Canada + Horizon 1-10 + SW1 Half Colo, Half Hyperscaler IaaS
+    } else if (scenarioName === '2026-h18-sw1') {
+      // Canada + Horizon 1-8 + SW1 300MW Hyperscaler
       setSites(sites.map(site => ({
         ...site,
         enabled: site.id === 'prince-george' ||
                  site.id === 'mackenzie-canal' ||
                  site.id === 'horizon-1-4' ||
-                 site.id === 'horizon-5-10' ||
-                 site.id === 'sweetwater-1-colo-700' ||
-                 site.id === 'sweetwater-1-iaas-700'
+                 site.id === 'horizon-5-8' ||
+                 site.id === 'sweetwater-1-300mw'
       })));
     }
   };
@@ -560,7 +586,7 @@ function App() {
 
     // If the deleted scenario was selected, switch to default
     if (selectedScenario === scenarioId) {
-      loadScenario('full');
+      loadScenario('2027-h110-colo');
     }
   };
 
@@ -722,13 +748,18 @@ function App() {
     if (data.hardwareMode === 'total') {
       totalHardwareCost = data.totalHardwareCost || 0;
     } else if (data.hardwareMode === 'gpus') {
-      const gpus = data.gpus || {};
-      totalHardwareCost =
-        (gpus.b300 || 0) * gpuPrices.b300 / 1000 +
-        (gpus.b200 || 0) * gpuPrices.b200 / 1000 +
-        (gpus.mi350x || 0) * gpuPrices.mi350x / 1000 +
-        (gpus.gb300 || 0) * gpuPrices.gb300 / 1000 +
-        (gpus.hyperscaleBulkGB300 || 0) * gpuPrices.hyperscaleBulkGB300 / 1000;
+      // Calculate hardware cost from all GPU types
+      const hyperscaleCount = data.directGpuCount || 0;
+      const veraRubinCount = data.veraRubinGpuCount || 0;
+      const hyperscaleCost = hyperscaleCount * gpuPrices.hyperscaleBulkGB300 / 1000000;
+      const veraRubinCost = veraRubinCount * gpuPrices.veraRubinNVL144 / 1000000;
+      totalHardwareCost = hyperscaleCost + veraRubinCost;
+      if (hyperscaleCount > 0) {
+        steps.push(`Hyperscale Bulk GB300: ${hyperscaleCount.toLocaleString()} GPUs × $${gpuPrices.hyperscaleBulkGB300.toLocaleString()} = $${hyperscaleCost.toFixed(2)}M`);
+      }
+      if (veraRubinCount > 0) {
+        steps.push(`Hyperscale Bulk Vera Rubin NVL144: ${veraRubinCount.toLocaleString()} GPUs × $${gpuPrices.veraRubinNVL144.toLocaleString()} = $${veraRubinCost.toFixed(2)}M`);
+      }
       steps.push(`Total Hardware Cost: $${totalHardwareCost.toFixed(2)}M`);
     }
 
@@ -974,20 +1005,22 @@ function App() {
   };
 
   // Filter sites based on selected scenario
-  // Only show 700MW Sweetwater sites in the half-colo-half-cloud or half-colo-half-iaas scenarios
-  // Hide original Sweetwater 1 (1400MW) when in these scenarios
+  // Show specific sites only in certain scenarios
   const activeSites = sites.filter(site => {
-    if (site.id === 'sweetwater-1-colo-700') {
-      return selectedScenario === 'half-colo-half-cloud' || selectedScenario === 'half-colo-half-iaas';
+    if (site.id === 'sweetwater-1-300mw') {
+      return selectedScenario === '2026-h18-sw1';
     }
-    if (site.id === 'sweetwater-1-iren-700') {
-      return selectedScenario === 'half-colo-half-cloud';
-    }
-    if (site.id === 'sweetwater-1-iaas-700') {
-      return selectedScenario === 'half-colo-half-iaas';
+    if (site.id === 'sweetwater-1-1400mw') {
+      return selectedScenario === '2027-h110-hyperscaler';
     }
     if (site.id === 'sweetwater-1') {
-      return selectedScenario !== 'half-colo-half-cloud' && selectedScenario !== 'half-colo-half-iaas';
+      return selectedScenario !== '2027-h110-hyperscaler' && selectedScenario !== '2026-h18-sw1';
+    }
+    if (site.id === 'horizon-5-8') {
+      return selectedScenario === '2026-h18-sw1';
+    }
+    if (site.id === 'horizon-5-10') {
+      return selectedScenario !== '2026-h18-sw1';
     }
     return true;
   });
@@ -1138,8 +1171,8 @@ function App() {
             <div className="accordion-content">
               <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
             <button
-              onClick={() => loadScenario('canada-only')}
-              className={`scenario-btn ${selectedScenario === 'canada-only' ? 'selected' : ''}`}
+              onClick={() => loadScenario('canada')}
+              className={`scenario-btn ${selectedScenario === 'canada' ? 'selected' : ''}`}
             >
               <div>
                 <div>Canada</div>
@@ -1156,30 +1189,30 @@ function App() {
               </div>
             </button>
             <button
-              onClick={() => loadScenario('full')}
-              className={`scenario-btn ${selectedScenario === 'full' ? 'selected' : ''}`}
+              onClick={() => loadScenario('2026-h18-sw1')}
+              className={`scenario-btn ${selectedScenario === '2026-h18-sw1' ? 'selected' : ''}`}
             >
               <div>
-                <div>Canada + Horizon 1-10</div>
+                <div>Frans 2026: Canada + Horizon 1-8</div>
+                <div>+ SW1 200MW IT Hyperscaler</div>
+              </div>
+            </button>
+            <button
+              onClick={() => loadScenario('2027-h110-colo')}
+              className={`scenario-btn ${selectedScenario === '2027-h110-colo' ? 'selected' : ''}`}
+            >
+              <div>
+                <div>2027: Canada + Horizon 1-10</div>
                 <div>+ SW1 Colo</div>
               </div>
             </button>
             <button
-              onClick={() => loadScenario('half-colo-half-iaas')}
-              className={`scenario-btn ${selectedScenario === 'half-colo-half-iaas' ? 'selected' : ''}`}
+              onClick={() => loadScenario('2027-h110-hyperscaler')}
+              className={`scenario-btn ${selectedScenario === '2027-h110-hyperscaler' ? 'selected' : ''}`}
             >
               <div>
-                <div>Canada + Horizon 1-10 + SW1</div>
-                <div>Half Colo, Half Hyperscaler IaaS</div>
-              </div>
-            </button>
-            <button
-              onClick={() => loadScenario('half-colo-half-cloud')}
-              className={`scenario-btn ${selectedScenario === 'half-colo-half-cloud' ? 'selected' : ''}`}
-            >
-              <div>
-                <div>Canada + Horizon 1-10 + SW1</div>
-                <div>Half Colo, Half IREN Cloud</div>
+                <div>Dulce 2027: Canada + Horizon 1-10</div>
+                <div>+ SW1 933 MW IT Hyperscaler</div>
               </div>
             </button>
 

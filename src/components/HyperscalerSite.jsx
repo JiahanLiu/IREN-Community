@@ -31,6 +31,15 @@ function HyperscalerSite({ site, result, gpuPrices, gpuHourlyRates, updateSite, 
     return Math.round(defaultGpuCount * ratio);
   };
 
+  const calculateScaledVeraRubinGpuCount = () => {
+    const currentLoad = getCurrentDCITLoad();
+    const defaultLoad = site.data.defaultDCITLoad || currentLoad;
+    const ratio = defaultLoad > 0 ? currentLoad / defaultLoad : 1;
+
+    const defaultVeraRubinCount = site.data.defaultVeraRubinGpuCount ?? site.data.veraRubinGpuCount ?? 0;
+    return Math.round(defaultVeraRubinCount * ratio);
+  };
+
   // Calculate scaled GPU counts for hardware mode 'gpus'
   const calculateScaledGPUs = () => {
     const currentLoad = getCurrentDCITLoad();
@@ -52,15 +61,23 @@ function HyperscalerSite({ site, result, gpuPrices, gpuHourlyRates, updateSite, 
   useEffect(() => {
     if (site.data.autoscaleGPUs) {
       const scaledGpuCount = calculateScaledGpuCount();
+      const scaledVeraRubinCount = calculateScaledVeraRubinGpuCount();
 
-      // Update directGpuCount if it has changed
-      if (scaledGpuCount !== site.data.directGpuCount) {
+      // Check if any GPU counts have changed
+      const hyperscaleChanged = scaledGpuCount !== site.data.directGpuCount;
+      const veraRubinChanged = scaledVeraRubinCount !== site.data.veraRubinGpuCount;
+
+      // Update GPU counts if they have changed
+      if (hyperscaleChanged || veraRubinChanged) {
+        const updates = {};
+        if (hyperscaleChanged) updates.directGpuCount = scaledGpuCount;
+        if (veraRubinChanged) updates.veraRubinGpuCount = scaledVeraRubinCount;
+
         if (site.data.autoCalculateRevenue) {
-          const revenueInMillions = calculateContractRevenue(scaledGpuCount, site.data.contractYears || 1);
-          updateSite(site.id, { directGpuCount: scaledGpuCount, toplineRevenue: revenueInMillions });
-        } else {
-          update('directGpuCount', scaledGpuCount);
+          const revenueInMillions = calculateContractRevenue(scaledGpuCount, scaledVeraRubinCount, site.data.contractYears || 1);
+          updates.toplineRevenue = revenueInMillions;
         }
+        updateSite(site.id, updates);
       }
 
       // Also update GPUs if in 'gpus' hardware mode
@@ -94,10 +111,12 @@ function HyperscalerSite({ site, result, gpuPrices, gpuHourlyRates, updateSite, 
     update(field, finalValue);
   };
 
-  const calculateContractRevenue = (gpuCount, contractYears) => {
+  const calculateContractRevenue = (hyperscaleCount, veraRubinCount, contractYears) => {
     const hoursPerYear = 24 * 365;
-    const revenueInDollars = gpuCount * gpuHourlyRates.hyperscaleBulkGB300 * contractYears * hoursPerYear;
-    const roundedDollars = Math.round(revenueInDollars);
+    const hyperscaleRevenue = (hyperscaleCount || 0) * gpuHourlyRates.hyperscaleBulkGB300 * contractYears * hoursPerYear;
+    const veraRubinRevenue = (veraRubinCount || 0) * (gpuHourlyRates.veraRubinNVL144 || 0) * contractYears * hoursPerYear;
+    const totalRevenue = hyperscaleRevenue + veraRubinRevenue;
+    const roundedDollars = Math.round(totalRevenue);
     return roundedDollars / 1000000;
   };
 
@@ -106,7 +125,9 @@ function HyperscalerSite({ site, result, gpuPrices, gpuHourlyRates, updateSite, 
 
     // Auto-calculate base contract revenue if enabled
     if (site.data.autoCalculateRevenue && parsedValue !== '') {
-      const revenueInMillions = calculateContractRevenue(parsedValue, site.data.contractYears || 1);
+      const hyperscaleCount = field === 'directGpuCount' ? parsedValue : (site.data.directGpuCount || 0);
+      const veraRubinCount = field === 'veraRubinGpuCount' ? parsedValue : (site.data.veraRubinGpuCount || 0);
+      const revenueInMillions = calculateContractRevenue(hyperscaleCount, veraRubinCount, site.data.contractYears || 1);
       updateSite(site.id, { [field]: parsedValue, toplineRevenue: revenueInMillions });
     } else {
       update(field, parsedValue);
@@ -118,7 +139,9 @@ function HyperscalerSite({ site, result, gpuPrices, gpuHourlyRates, updateSite, 
 
     // Auto-calculate base contract revenue if enabled
     if (site.data.autoCalculateRevenue) {
-      const revenueInMillions = calculateContractRevenue(finalValue, site.data.contractYears || 1);
+      const hyperscaleCount = field === 'directGpuCount' ? finalValue : (site.data.directGpuCount || 0);
+      const veraRubinCount = field === 'veraRubinGpuCount' ? finalValue : (site.data.veraRubinGpuCount || 0);
+      const revenueInMillions = calculateContractRevenue(hyperscaleCount, veraRubinCount, site.data.contractYears || 1);
       updateSite(site.id, { [field]: finalValue, toplineRevenue: revenueInMillions });
     } else {
       update(field, finalValue);
@@ -130,7 +153,7 @@ function HyperscalerSite({ site, result, gpuPrices, gpuHourlyRates, updateSite, 
 
     // Auto-calculate base contract revenue if enabled
     if (site.data.autoCalculateRevenue && parsedValue !== '') {
-      const revenueInMillions = calculateContractRevenue(site.data.directGpuCount || 0, parsedValue);
+      const revenueInMillions = calculateContractRevenue(site.data.directGpuCount || 0, site.data.veraRubinGpuCount || 0, parsedValue);
       updateSite(site.id, { contractYears: parsedValue, toplineRevenue: revenueInMillions });
     } else {
       update('contractYears', parsedValue);
@@ -142,7 +165,7 @@ function HyperscalerSite({ site, result, gpuPrices, gpuHourlyRates, updateSite, 
 
     // Auto-calculate base contract revenue if enabled
     if (site.data.autoCalculateRevenue) {
-      const revenueInMillions = calculateContractRevenue(site.data.directGpuCount || 0, finalValue);
+      const revenueInMillions = calculateContractRevenue(site.data.directGpuCount || 0, site.data.veraRubinGpuCount || 0, finalValue);
       updateSite(site.id, { contractYears: finalValue, toplineRevenue: revenueInMillions });
     } else {
       update('contractYears', finalValue);
@@ -154,7 +177,7 @@ function HyperscalerSite({ site, result, gpuPrices, gpuHourlyRates, updateSite, 
 
     // If enabling auto-calculate, immediately calculate revenue
     if (newAutoCalculate) {
-      const revenueInMillions = calculateContractRevenue(site.data.directGpuCount || 0, site.data.contractYears || 1);
+      const revenueInMillions = calculateContractRevenue(site.data.directGpuCount || 0, site.data.veraRubinGpuCount || 0, site.data.contractYears || 1);
       updateSite(site.id, { autoCalculateRevenue: newAutoCalculate, toplineRevenue: revenueInMillions });
     } else {
       update('autoCalculateRevenue', newAutoCalculate);
@@ -167,16 +190,20 @@ function HyperscalerSite({ site, result, gpuPrices, gpuHourlyRates, updateSite, 
     // If enabling autoscale, immediately calculate scaled values
     if (newAutoscale) {
       const scaledGpuCount = calculateScaledGpuCount();
+      const scaledVeraRubinCount = calculateScaledVeraRubinGpuCount();
 
       // Also initialize default values if not set
       const defaultLoad = site.data.defaultDCITLoad || getCurrentDCITLoad();
       const defaultGpuCount = site.data.defaultDirectGpuCount ?? site.data.directGpuCount ?? 0;
+      const defaultVeraRubinCount = site.data.defaultVeraRubinGpuCount ?? site.data.veraRubinGpuCount ?? 0;
 
       const updates = {
         autoscaleGPUs: newAutoscale,
         directGpuCount: scaledGpuCount,
+        veraRubinGpuCount: scaledVeraRubinCount,
         defaultDCITLoad: defaultLoad,
-        defaultDirectGpuCount: defaultGpuCount
+        defaultDirectGpuCount: defaultGpuCount,
+        defaultVeraRubinGpuCount: defaultVeraRubinCount
       };
 
       // If using GPU hardware mode, also scale and save default GPUs
@@ -189,7 +216,7 @@ function HyperscalerSite({ site, result, gpuPrices, gpuHourlyRates, updateSite, 
 
       // If auto-calculate revenue is enabled, update revenue too
       if (site.data.autoCalculateRevenue) {
-        const revenueInMillions = calculateContractRevenue(scaledGpuCount, site.data.contractYears || 1);
+        const revenueInMillions = calculateContractRevenue(scaledGpuCount, scaledVeraRubinCount, site.data.contractYears || 1);
         updates.toplineRevenue = revenueInMillions;
       }
 
@@ -365,26 +392,39 @@ function HyperscalerSite({ site, result, gpuPrices, gpuHourlyRates, updateSite, 
             {gpuCountsOpen && (
               <>
                 {Object.keys(gpuPrices).map(gpuType => {
-                  // Use directGpuCount for hyperscaleBulkGB300, gpus object for others
-                  const isHyperscaleBulk = gpuType === 'hyperscaleBulkGB300';
-                  const value = isHyperscaleBulk
-                    ? (site.data.directGpuCount ?? '')
+                  // Map GPU types to their corresponding data fields
+                  const fieldMap = {
+                    'hyperscaleBulkGB300': 'directGpuCount',
+                    'veraRubinNVL144': 'veraRubinGpuCount'
+                  };
+                  const displayNames = {
+                    'hyperscaleBulkGB300': 'Hyperscale Bulk GB300',
+                    'veraRubinNVL144': 'Hyperscale Bulk Vera Rubin NVL144',
+                    'gb300': 'GB300',
+                    'b200': 'B200',
+                    'b300': 'B300',
+                    'mi350x': 'MI350X'
+                  };
+                  const field = fieldMap[gpuType] || `gpus.${gpuType}`;
+                  const isHyperscaleType = fieldMap[gpuType] !== undefined;
+                  const value = isHyperscaleType
+                    ? (site.data[fieldMap[gpuType]] ?? '')
                     : (site.data.gpus?.[gpuType] ?? '');
-                  const onChange = isHyperscaleBulk
-                    ? (e) => handleGpuCountChange('directGpuCount', e.target.value)
-                    : (e) => handleGpuChange(gpuType, e.target.value);
-                  const onBlur = isHyperscaleBulk
-                    ? (e) => handleGpuCountBlur('directGpuCount', e.target.value)
-                    : (e) => handleGpuBlur(gpuType, e.target.value);
 
                   return (
                     <div key={gpuType} className="input-row">
-                      <label style={{ textTransform: 'uppercase' }}>{gpuType.replace(/([A-Z])/g, ' $1').trim()}</label>
+                      <label>{displayNames[gpuType] || gpuType.replace(/([A-Z])/g, ' $1').trim().toUpperCase()}</label>
                       <input
                         type="number"
                         value={value}
-                        onChange={onChange}
-                        onBlur={onBlur}
+                        onChange={(e) => isHyperscaleType
+                          ? handleGpuCountChange(fieldMap[gpuType], e.target.value)
+                          : handleGpuChange(gpuType, e.target.value)
+                        }
+                        onBlur={(e) => isHyperscaleType
+                          ? handleGpuCountBlur(fieldMap[gpuType], e.target.value)
+                          : handleGpuBlur(gpuType, e.target.value)
+                        }
                         disabled={site.data.autoscaleGPUs}
                         style={site.data.autoscaleGPUs ? { backgroundColor: '#f0f0f0', cursor: 'not-allowed' } : {}}
                       />
