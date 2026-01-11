@@ -1,8 +1,11 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
+import SiteOutputs from './SiteOutputs';
+import SiteAccordionHeader from './SiteAccordionHeader';
+import LoadInputSection from './LoadInputSection';
+import CalcSteps from './CalcSteps';
+import GPUCountsSection from './GPUCountsSection';
 
 function IRENCloudSite({ site, result, gpuPrices, gpuHourlyRates, updateSite, updateSiteName, toggleSite, toggleAccordion, deleteSite }) {
-  const [gpuCountsOpen, setGpuCountsOpen] = useState(false);
-
   const update = (field, value) => {
     updateSite(site.id, { [field]: value });
   };
@@ -153,8 +156,6 @@ function IRENCloudSite({ site, result, gpuPrices, gpuHourlyRates, updateSite, up
     }
   };
 
-  const isOpen = site.accordionOpen;
-
   const getDCCostPerMW = () => {
     if (site.data.dcType === 'retrofit') return 0;
     if (site.data.newDcType === 't3-liquid') return 15;
@@ -165,41 +166,16 @@ function IRENCloudSite({ site, result, gpuPrices, gpuHourlyRates, updateSite, up
 
   return (
     <div className="accordion">
-      <div className="accordion-header" onClick={() => toggleAccordion(site.id)}>
-        <div className="accordion-title-row">
-          <input
-            type="text"
-            value={site.name}
-            onChange={(e) => {
-              e.stopPropagation();
-              updateSiteName(site.id, e.target.value);
-            }}
-            onClick={(e) => e.stopPropagation()}
-            className="site-name-input"
-          />
-          <span className="site-type-badge">{site.type}</span>
-          <div className="site-actions" onClick={(e) => e.stopPropagation()}>
-            <div
-              className={`toggle-switch ${site.enabled ? 'enabled' : ''}`}
-              onClick={() => toggleSite(site.id)}
-            >
-              <div className="toggle-slider"></div>
-            </div>
-            <button className="delete-btn" onClick={() => deleteSite(site.id)}>Delete</button>
-          </div>
-        </div>
-        <div className="net-profit-display">
-          <div className="label">Annual Revenue</div>
-          <div className="value">${(result.revenue / 1000).toFixed(2)}B/yr</div>
-        </div>
-        <div className="net-profit-display">
-          <div className="label">Earnings before Tax, SG&A</div>
-          <div className="value">${result.netProfit.toFixed(2)}M/yr</div>
-        </div>
-        <span className="accordion-icon">{isOpen ? '−' : '+'}</span>
-      </div>
+      <SiteAccordionHeader
+        site={site}
+        result={result}
+        updateSiteName={updateSiteName}
+        toggleSite={toggleSite}
+        toggleAccordion={toggleAccordion}
+        deleteSite={deleteSite}
+      />
 
-      {isOpen && (
+      {site.accordionOpen && (
         <div className="accordion-content">
           {!site.enabled ? (
             <div className="disabled-message">
@@ -208,91 +184,25 @@ function IRENCloudSite({ site, result, gpuPrices, gpuHourlyRates, updateSite, up
           ) : (
             <>
             <div className="site-content-layout">
-              <div className="site-outputs">
-                <div className="output-item">
-                  <span className="output-label">Annual Revenue</span>
-                  <span className="output-value revenue">${(result.revenue / 1000).toFixed(2)}B/yr</span>
-                </div>
-                <div className="output-item">
-                  <span className="output-label">Earnings before Tax, SG&A</span>
-                  <span className="output-value earnings">${result.netProfit.toFixed(2)}M/yr</span>
-                </div>
-              </div>
+              <SiteOutputs result={result} />
               <div className="site-inputs">
-              <div className="input-row">
-                <label>Load Input Mode</label>
-                <div className="radio-group">
-                  <label>
-                    <input
-                      type="radio"
-                      checked={site.data.loadInputMode === 'total'}
-                      onChange={() => update('loadInputMode', 'total')}
-                    />
-                    Total Load + PUE
-                  </label>
-                  <label>
-                    <input
-                      type="radio"
-                      checked={site.data.loadInputMode === 'direct'}
-                      onChange={() => update('loadInputMode', 'direct')}
-                    />
-                    DC IT Load
-                  </label>
-                </div>
-              </div>
-
-              {site.data.loadInputMode === 'total' ? (
-                <>
-                  <div className="input-row">
-                    <label>Site Size/Total Load</label>
-                    <div className="input-with-unit">
-                      <input
-                        type="number"
-                        value={site.data.sizeValue}
-                        onChange={(e) => handleNumberChange('sizeValue', e.target.value)}
-                        onBlur={(e) => handleNumberBlur('sizeValue', e.target.value)}
-                      />
-                      <select
-                        value={site.data.sizeUnit}
-                        onChange={(e) => update('sizeUnit', e.target.value)}
-                      >
-                        <option value="MW">MW</option>
-                        <option value="GW">GW</option>
-                      </select>
-                    </div>
-                  </div>
-
-                  <div className="input-row">
-                    <label>PUE</label>
-                    <input
-                      type="number"
-                      step="0.1"
-                      value={site.data.pue}
-                      onChange={(e) => handleNumberChange('pue', e.target.value)}
-                      onBlur={(e) => handleNumberBlur('pue', e.target.value, 1)}
-                    />
-                  </div>
-                </>
-              ) : (
-                <div className="input-row">
-                  <label>IT Load</label>
-                  <div className="input-with-unit">
-                    <input
-                      type="number"
-                      value={site.data.itLoad ?? 0}
-                      onChange={(e) => handleNumberChange('itLoad', e.target.value)}
-                      onBlur={(e) => handleNumberBlur('itLoad', e.target.value)}
-                    />
-                    <select
-                      value={site.data.itLoadUnit || 'MW'}
-                      onChange={(e) => update('itLoadUnit', e.target.value)}
-                    >
-                      <option value="MW">MW</option>
-                      <option value="GW">GW</option>
-                    </select>
-                  </div>
-                </div>
-              )}
+              <LoadInputSection
+                loadInputMode={site.data.loadInputMode}
+                sizeValue={site.data.sizeValue}
+                sizeUnit={site.data.sizeUnit}
+                pue={site.data.pue}
+                itLoad={site.data.itLoad}
+                itLoadUnit={site.data.itLoadUnit}
+                onModeChange={(mode) => update('loadInputMode', mode)}
+                onSizeValueChange={(value) => handleNumberChange('sizeValue', value)}
+                onSizeValueBlur={(value) => handleNumberBlur('sizeValue', value)}
+                onSizeUnitChange={(value) => update('sizeUnit', value)}
+                onPueChange={(value) => handleNumberChange('pue', value)}
+                onPueBlur={(value) => handleNumberBlur('pue', value, 1)}
+                onItLoadChange={(value) => handleNumberChange('itLoad', value)}
+                onItLoadBlur={(value) => handleNumberBlur('itLoad', value)}
+                onItLoadUnitChange={(value) => update('itLoadUnit', value)}
+              />
 
           <div className="input-row">
             <label>Autoscale GPU Counts based on DC IT Load?</label>
@@ -320,45 +230,28 @@ function IRENCloudSite({ site, result, gpuPrices, gpuHourlyRates, updateSite, up
             </div>
           </div>
 
-          <div className="gpu-inputs">
-            <h4
-              onClick={() => setGpuCountsOpen(!gpuCountsOpen)}
-              style={{ cursor: 'pointer', userSelect: 'none', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
-            >
-              <span>GPU Counts</span>
-              <span style={{ fontSize: '1.2em' }}>{gpuCountsOpen ? '−' : '+'}</span>
-            </h4>
-            {gpuCountsOpen && (
-              <>
-                {Object.keys(gpuPrices).map(gpuType => (
-                  <div key={gpuType} className="input-row">
-                    <label style={{ textTransform: 'uppercase' }}>{gpuType.replace(/([A-Z])/g, ' $1').trim()}</label>
-                    <input
-                      type="number"
-                      value={site.data.gpus[gpuType] ?? ''}
-                      onChange={(e) => handleGpuChange(gpuType, e.target.value)}
-                      onBlur={(e) => handleGpuBlur(gpuType, e.target.value)}
-                      disabled={site.data.autoscaleGPUs}
-                      style={site.data.autoscaleGPUs ? { backgroundColor: '#f0f0f0', cursor: 'not-allowed' } : {}}
-                    />
-                  </div>
-                ))}
-
-                <div className="input-row">
-                  <label>Paid Off (%)</label>
-                  <input
-                    type="number"
-                    min="0"
-                    max="100"
-                    step="1"
-                    value={site.data.gpuPaidOffPercent ?? 0}
-                    onChange={(e) => handleNumberChange('gpuPaidOffPercent', e.target.value)}
-                    onBlur={(e) => handleNumberBlur('gpuPaidOffPercent', e.target.value, 0)}
-                  />
-                </div>
-              </>
-            )}
-          </div>
+          <GPUCountsSection
+            gpuPrices={gpuPrices}
+            gpuValues={site.data.gpus}
+            siteData={site.data}
+            autoscaleGPUs={site.data.autoscaleGPUs}
+            onGpuChange={handleGpuChange}
+            onGpuBlur={handleGpuBlur}
+            extraInputs={
+              <div className="input-row">
+                <label>Paid Off (%)</label>
+                <input
+                  type="number"
+                  min="0"
+                  max="100"
+                  step="1"
+                  value={site.data.gpuPaidOffPercent ?? 0}
+                  onChange={(e) => handleNumberChange('gpuPaidOffPercent', e.target.value)}
+                  onBlur={(e) => handleNumberBlur('gpuPaidOffPercent', e.target.value, 0)}
+                />
+              </div>
+            }
+          />
 
               <div className="input-row">
                 <label>Auto Calculate Base Revenue from GPU Counts?</label>
@@ -555,9 +448,7 @@ function IRENCloudSite({ site, result, gpuPrices, gpuHourlyRates, updateSite, up
 
               </div>
             </div>
-            <div className="calc-steps">
-              {result.steps.map((step, i) => <div key={i}>{step}</div>)}
-            </div>
+            <CalcSteps steps={result.steps} />
             </>
           )}
         </div>
