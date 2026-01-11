@@ -207,6 +207,18 @@ function IRENCloudSite({ site, result, gpuPrices, gpuHourlyRates, updateSite, up
             </div>
           ) : (
             <>
+            <div className="site-content-layout">
+              <div className="site-outputs">
+                <div className="output-item">
+                  <span className="output-label">Annual Revenue</span>
+                  <span className="output-value revenue">${(result.revenue / 1000).toFixed(2)}B/yr</span>
+                </div>
+                <div className="output-item">
+                  <span className="output-label">Earnings before Tax, SG&A</span>
+                  <span className="output-value earnings">${result.netProfit.toFixed(2)}M/yr</span>
+                </div>
+              </div>
+              <div className="site-inputs">
               <div className="input-row">
                 <label>Load Input Mode</label>
                 <div className="radio-group">
@@ -541,9 +553,11 @@ function IRENCloudSite({ site, result, gpuPrices, gpuHourlyRates, updateSite, up
             />
           </div>
 
-          <div className="calc-steps">
-            {result.steps.map((step, i) => <div key={i}>{step}</div>)}
-          </div>
+              </div>
+            </div>
+            <div className="calc-steps">
+              {result.steps.map((step, i) => <div key={i}>{step}</div>)}
+            </div>
             </>
           )}
         </div>

@@ -1456,7 +1456,7 @@ function App() {
                     />
                   </div>
                   <div className="calc-steps">
-                    Fully Diluted Shares = {currentShares}M × (1 + {dilutionPercentage}%) = {fullyDilutedShares.toFixed(1)}M
+                    <div>Fully Diluted Shares = {currentShares}M × (1 + {dilutionPercentage}%) = {fullyDilutedShares.toFixed(1)}M</div>
                   </div>
                 </>
               ) : (
