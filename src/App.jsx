@@ -727,7 +727,12 @@ function App() {
     const netProfit = revenue - dcDepreciation;
     steps.push(`Earnings before Tax, SG&A: $${revenue.toFixed(2)}M - $${dcDepreciation.toFixed(2)}M = $${netProfit.toFixed(2)}M/yr`);
 
-    return { netProfit, revenue, steps };
+    // Calculate payback years: Total Costs / Annual Revenue (EBITDA for colocation is essentially revenue)
+    const totalCosts = dcCost; // Colocation has no GPU costs or interest
+    const paybackYears = revenue > 0 ? totalCosts / revenue : Infinity;
+    steps.push(`Payback: $${totalCosts.toFixed(2)}M / $${revenue.toFixed(2)}M/yr = ${paybackYears.toFixed(1)} years`);
+
+    return { netProfit, revenue, steps, paybackYears };
   };
 
   const calculateHyperscalerProfit = (data) => {
@@ -892,7 +897,12 @@ function App() {
     // Calculate annual revenue (divide total contract revenue by contract years)
     const annualRevenue = totalRevenue / (data.contractYears || 1);
 
-    return { netProfit, revenue: annualRevenue, steps };
+    // Calculate payback years: Total Costs / Annual EBITDA
+    const totalCosts = totalHardwareCost + dcCost + totalInterest;
+    const paybackYears = ebitdaPerYear > 0 ? totalCosts / ebitdaPerYear : Infinity;
+    steps.push(`Payback: ($${totalHardwareCost.toFixed(2)}M + $${dcCost.toFixed(2)}M + $${totalInterest.toFixed(2)}M) / $${ebitdaPerYear.toFixed(2)}M/yr = ${paybackYears.toFixed(1)} years`);
+
+    return { netProfit, revenue: annualRevenue, steps, paybackYears };
   };
 
   const calculateIRENCloudProfit = (data, prices) => {
@@ -942,14 +952,15 @@ function App() {
 
     // DC depreciation
     let dcDepreciation = 0;
+    let dcCost = 0;
     if (data.dcType === 'retrofit') {
-      const retrofitCapex = itLoad * (data.retrofitCapexPerMW || 0);
-      dcDepreciation = retrofitCapex / (data.dcLifetime || 20);
-      steps.push(`Retrofit Capex: ${itLoad.toFixed(2)} MW × $${(data.retrofitCapexPerMW || 0)}M/MW = $${retrofitCapex.toFixed(2)}M`);
-      steps.push(`DC Depreciation (Retrofit): $${retrofitCapex.toFixed(2)}M / ${(data.dcLifetime || 20)} yrs = $${dcDepreciation.toFixed(2)}M/yr`);
+      dcCost = itLoad * (data.retrofitCapexPerMW || 0);
+      dcDepreciation = dcCost / (data.dcLifetime || 20);
+      steps.push(`Retrofit Capex: ${itLoad.toFixed(2)} MW × $${(data.retrofitCapexPerMW || 0)}M/MW = $${dcCost.toFixed(2)}M`);
+      steps.push(`DC Depreciation (Retrofit): $${dcCost.toFixed(2)}M / ${(data.dcLifetime || 20)} yrs = $${dcDepreciation.toFixed(2)}M/yr`);
     } else {
       const dcCostPerMW = data.dcCostPerMW || 0;
-      const dcCost = itLoad * dcCostPerMW;
+      dcCost = itLoad * dcCostPerMW;
       dcDepreciation = dcCost / (data.dcLifetime || 1);
       steps.push(`DC Cost: ${itLoad.toFixed(2)} MW × $${dcCostPerMW}M/MW = $${dcCost.toFixed(2)}M`);
       steps.push(`DC Depreciation: $${dcCost.toFixed(2)}M / ${(data.dcLifetime || 1)} yrs = $${dcDepreciation.toFixed(2)}M/yr`);
@@ -1001,7 +1012,12 @@ function App() {
     const netProfit = ebitda - gpuDepreciation - dcDepreciation - averageInterestPerYear + residualValuePerYear;
     steps.push(`Earnings before Tax, SG&A: $${ebitda.toFixed(2)}M - $${gpuDepreciation.toFixed(2)}M - $${dcDepreciation.toFixed(2)}M - $${averageInterestPerYear.toFixed(2)}M + $${residualValuePerYear.toFixed(2)}M = $${netProfit.toFixed(2)}M/yr`);
 
-    return { netProfit, revenue, steps };
+    // Calculate payback years: Total Costs / Annual EBITDA
+    const totalCosts = totalGpuCost + dcCost + totalInterest;
+    const paybackYears = ebitda > 0 ? totalCosts / ebitda : Infinity;
+    steps.push(`Payback: ($${totalGpuCost.toFixed(2)}M + $${dcCost.toFixed(2)}M + $${totalInterest.toFixed(2)}M) / $${ebitda.toFixed(2)}M/yr = ${paybackYears.toFixed(1)} years`);
+
+    return { netProfit, revenue, steps, paybackYears };
   };
 
   // Filter sites based on selected scenario
