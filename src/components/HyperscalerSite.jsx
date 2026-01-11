@@ -1,9 +1,9 @@
 import React, { useEffect } from 'react';
-import SiteOutputs from './SiteOutputs';
-import SiteAccordionHeader from './SiteAccordionHeader';
-import LoadInputSection from './LoadInputSection';
-import CalcSteps from './CalcSteps';
-import GPUCountsSection from './GPUCountsSection';
+import SiteOutputs from './shared/SiteOutputs';
+import SiteAccordionHeader from './shared/SiteAccordionHeader';
+import LoadInputSection from './shared/LoadInputSection';
+import CalcSteps from './shared/CalcSteps';
+import GPUCountsSection from './shared/GPUCountsSection';
 
 function HyperscalerSite({ site, result, gpuPrices, gpuHourlyRates, updateSite, updateSiteName, toggleSite, toggleAccordion, deleteSite }) {
   const update = (field, value) => {

@@ -1,8 +1,8 @@
 import React from 'react';
-import SiteOutputs from './SiteOutputs';
-import SiteAccordionHeader from './SiteAccordionHeader';
-import LoadInputSection from './LoadInputSection';
-import CalcSteps from './CalcSteps';
+import SiteOutputs from './shared/SiteOutputs';
+import SiteAccordionHeader from './shared/SiteAccordionHeader';
+import LoadInputSection from './shared/LoadInputSection';
+import CalcSteps from './shared/CalcSteps';
 
 function ColocationSite({ site, result, updateSite, updateSiteName, toggleSite, toggleAccordion, deleteSite }) {
   const update = (field, value) => {

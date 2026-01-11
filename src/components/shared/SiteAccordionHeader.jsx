@@ -1,12 +1,12 @@
 import React from 'react';
 
-function SiteAccordionHeader({ 
-  site, 
-  result, 
-  updateSiteName, 
-  toggleSite, 
-  toggleAccordion, 
-  deleteSite 
+function SiteAccordionHeader({
+  site,
+  result,
+  updateSiteName,
+  toggleSite,
+  toggleAccordion,
+  deleteSite
 }) {
   const isOpen = site.accordionOpen;
 

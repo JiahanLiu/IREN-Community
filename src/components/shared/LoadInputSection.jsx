@@ -1,6 +1,6 @@
 import React from 'react';
 
-function LoadInputSection({ 
+function LoadInputSection({
   loadInputMode,
   sizeValue,
   sizeUnit,
@@ -24,7 +24,7 @@ function LoadInputSection({
   onTotalLoadUnitChange
 }) {
   const isColocationMode = totalLoadValue !== undefined;
-  
+
   return (
     <>
       <div className="input-row">
@@ -57,7 +57,7 @@ function LoadInputSection({
               <input
                 type="number"
                 value={isColocationMode ? totalLoadValue : sizeValue}
-                onChange={(e) => isColocationMode 
+                onChange={(e) => isColocationMode
                   ? onTotalLoadValueChange(e.target.value)
                   : onSizeValueChange(e.target.value)
                 }
