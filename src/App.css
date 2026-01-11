@@ -280,11 +280,10 @@
   color: #1a1a1a;
   padding: 0.5rem 0.75rem;
   border-radius: 6px;
-  font-size: 1.1rem;
+  font-size: 1rem;
   font-weight: 600;
-  flex: 1;
-  min-width: 150px;
-  max-width: 300px;
+  flex: 0 0 auto;
+  width: 260px;
 }
 
 .site-name-input:focus {
@@ -300,52 +299,63 @@
   font-size: 0.875rem;
   font-weight: 600;
   color: #1a1a1a;
-  min-width: 160px;
+  min-width: 120px;
   text-align: center;
   white-space: nowrap;
 }
 
 .site-actions {
   display: flex;
-  gap: 0.5rem;
+  align-items: center;
+  gap: 1rem;
 }
 
 /* Toggle Switch */
 .toggle-switch {
   position: relative;
-  width: 120px;
-  height: 36px;
+  min-width: 130px;
+  height: 32px;
   background: #ccc;
-  border-radius: 18px;
+  border-radius: 16px;
   cursor: pointer;
   transition: background 0.3s;
   border: 2px solid #1a1a1a;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 0 10px;
+  padding: 0 28px 0 10px;
 }
 
 .toggle-switch.enabled {
   background: #71DA80;
   border-color: #1a1a1a;
+  padding: 0 10px 0 28px;
+}
+
+.toggle-label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #1a1a1a;
+  white-space: nowrap;
+  user-select: none;
 }
 
 .toggle-slider {
   position: absolute;
   top: 3px;
   right: 3px;
-  width: 26px;
-  height: 26px;
+  width: 22px;
+  height: 22px;
   background: white;
   border-radius: 50%;
-  transition: transform 0.3s;
+  transition: all 0.3s;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
   z-index: 2;
 }
 
 .toggle-switch.enabled .toggle-slider {
-  transform: translateX(-84px);
+  right: auto;
+  left: 3px;
 }
 
 .toggle-label {
@@ -358,7 +368,7 @@
 }
 
 .delete-btn {
-  padding: 0.5rem 1rem;
+  padding: 0.5rem 0.6rem;
   border: 2px solid #1a1a1a;
   background: transparent;
   color: #1a1a1a;
@@ -627,6 +637,155 @@
   transform: translateY(-2px);
   box-shadow: 0 4px 15px rgba(113, 218, 128, 0.3);
   background: #5fc96f;
+}
+
+/* Hidden input for file upload */
+.hidden-file-input {
+  display: none;
+}
+
+/* Scenario buttons layout */
+.scenario-buttons-container {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+/* Custom scenario button with delete */
+.scenario-btn-custom {
+  position: relative;
+}
+
+.scenario-btn-dashed {
+  border-style: dashed;
+}
+
+/* Scenario delete button */
+.scenario-delete-btn {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  background: #dc3545;
+  color: white;
+  border: none;
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+  padding: 0;
+}
+
+.scenario-delete-btn:hover {
+  background: #c82333;
+}
+
+/* Modal overlay */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+/* Modal content */
+.modal-content {
+  background: white;
+  padding: 2rem;
+  border-radius: 12px;
+  max-width: 500px;
+  width: 90%;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+.modal-title {
+  margin-top: 0;
+  color: #1a1a1a;
+}
+
+.modal-input-group {
+  margin-bottom: 1.5rem;
+}
+
+.modal-label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: 600;
+}
+
+.modal-input {
+  width: 100%;
+  padding: 0.75rem;
+  border: 2px solid #e9ecef;
+  border-radius: 8px;
+  font-size: 1rem;
+}
+
+.modal-buttons {
+  display: flex;
+  gap: 1rem;
+  justify-content: flex-end;
+}
+
+.modal-btn {
+  padding: 0.75rem 1.5rem;
+  border: none;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.modal-btn-cancel {
+  background: #6c757d;
+  color: white;
+}
+
+.modal-btn-cancel:hover {
+  background: #5a6268;
+}
+
+.modal-btn-save {
+  background: #71DA80;
+  color: #1a1a1a;
+}
+
+.modal-btn-save:hover {
+  background: #5fc96f;
+}
+
+.modal-btn-save:disabled {
+  background: #e9ecef;
+  color: #6c757d;
+  cursor: not-allowed;
+}
+
+/* Calc steps styling */
+.calc-steps-section-header {
+  font-weight: bold;
+  margin-bottom: 0.5rem;
+}
+
+.calc-steps-section-header-margin {
+  margin-top: 1rem;
+}
+
+.calc-steps-total {
+  margin-top: 0.5rem;
+}
+
+/* Version footer */
+.version-footer {
+  text-align: center;
+  padding: 2rem 0;
+  font-size: 0.85rem;
+  color: #666;
 }
 
 /* Responsive */

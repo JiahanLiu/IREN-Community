@@ -5,37 +5,21 @@ import ColocationSite from './components/ColocationSite';
 import HyperscalerSite from './components/HyperscalerSite';
 import IRENCloudSite from './components/IRENCloudSite';
 import packageJson from '../package.json';
-
-// Default scenario configuration
-const DEFAULT_SCENARIO = '2026-h18-sw1';
-const DEFAULT_SCENARIO_PARAMS = {
-  'canada': { peRatio: 50, dilutionPercentage: 0, currentShares: 352.7 },
-  'canada-h14': { peRatio: 50, dilutionPercentage: 0, currentShares: 352.7 },
-  '2027-h110-colo': { peRatio: 30, dilutionPercentage: 15, currentShares: 409.126 },
-  '2027-h110-hyperscaler': { peRatio: 30, dilutionPercentage: 60, currentShares: 409.126 },
-  '2026-h18-sw1': { peRatio: 40, dilutionPercentage: 15, currentShares: 409.126 }
-};
+import { formatValue, formatShares } from './utils/formatters';
+import { calculateSiteNetProfit } from './utils/calculations';
+import {
+  DEFAULT_SCENARIO,
+  DEFAULT_SCENARIO_PARAMS,
+  DEFAULT_GPU_PRICES,
+  DEFAULT_GPU_HOURLY_RATES
+} from './constants/defaults';
 
 function App() {
   // GPU Prices
-  const [gpuPrices, setGpuPrices] = useState({
-    hyperscaleBulkGB300: 76315.78,
-    veraRubinNVL144: 76315.78 * 1.5,
-    gb300: 80000,
-    b200: 45952.38,
-    b300: 61117.21,
-    mi350x: 42788.92,
-  });
+  const [gpuPrices, setGpuPrices] = useState(DEFAULT_GPU_PRICES);
 
   // GPU Hourly Rates
-  const [gpuHourlyRates, setGpuHourlyRates] = useState({
-    b200: 500000000 / 661169760 * 3.08,
-    b300: 500000000 / 661169760 * 3.85,
-    gb300: 500000000 / 661169760 * 5.11,
-    mi350x: 500000000 / 661169760 * 2.91,
-    hyperscaleBulkGB300: 1940000000 / 365 / 76000 / 24,
-    veraRubinNVL144: 1940000000 / 365 / 76000 / 24 * 1.75,
-  });
+  const [gpuHourlyRates, setGpuHourlyRates] = useState(DEFAULT_GPU_HOURLY_RATES);
 
   // Share calculation inputs
   const [useDirectSharesInput, setUseDirectSharesInput] = useState(false);
@@ -375,7 +359,7 @@ function App() {
     setSites(sites.map(site => ({ ...site, accordionOpen: false })));
   };
 
-  const downloadCSV = () => {
+  const downloadJSON = () => {
     const data = {
       gpuPrices,
       gpuHourlyRates,
@@ -685,340 +669,8 @@ function App() {
     }]);
   };
 
-  // Calculate net profit for each site
-  const calculateSiteNetProfit = (site) => {
-    if (!site.enabled) return { netProfit: 0, revenue: 0, steps: [] };
-
-    if (site.type === 'Colocation') {
-      return calculateColocationProfit(site.data);
-    } else if (site.type === 'Hyperscaler IaaS') {
-      return calculateHyperscalerProfit(site.data);
-    } else if (site.type === 'IREN Cloud') {
-      return calculateIRENCloudProfit(site.data, gpuPrices);
-    }
-    return { netProfit: 0, revenue: 0, steps: [] };
-  };
-
-  const calculateColocationProfit = (data) => {
-    const steps = [];
-
-    let itLoad;
-    if (data.loadInputMode === 'direct') {
-      const itLoadValue = data.itLoad || 0;
-      itLoad = data.itLoadUnit === 'GW' ? itLoadValue * 1000 : itLoadValue;
-      steps.push(`IT Load: ${itLoad.toFixed(2)} MW`);
-    } else {
-      const totalLoadValue = data.totalLoadValue || 0;
-      const totalLoadMW = data.totalLoadUnit === 'GW' ? totalLoadValue * 1000 : totalLoadValue;
-      steps.push(`Total Load: ${totalLoadMW.toFixed(2)} MW`);
-      itLoad = totalLoadMW / (data.pue || 1);
-      steps.push(`IT Load: ${totalLoadMW.toFixed(2)} MW / ${(data.pue || 1)} = ${itLoad.toFixed(2)} MW`);
-    }
-
-    const revenue = itLoad * (data.revenuePerMW || 0);
-    steps.push(`Revenue: ${itLoad.toFixed(2)} MW × $${(data.revenuePerMW || 0)}M/MW-yr = $${revenue.toFixed(2)}M/yr`);
-
-    const dcCost = itLoad * (data.dcCostPerMW || 0);
-    steps.push(`DC Cost: ${itLoad.toFixed(2)} MW × $${(data.dcCostPerMW || 0)}M/MW = $${dcCost.toFixed(2)}M`);
-
-    const dcDepreciation = dcCost / (data.dcLifetime || 1);
-    steps.push(`DC Depreciation: $${dcCost.toFixed(2)}M / ${(data.dcLifetime || 1)} yrs = $${dcDepreciation.toFixed(2)}M/yr`);
-
-    const netProfit = revenue - dcDepreciation;
-    steps.push(`Earnings before Tax, SG&A: $${revenue.toFixed(2)}M - $${dcDepreciation.toFixed(2)}M = $${netProfit.toFixed(2)}M/yr`);
-
-    // Calculate payback years: Total Costs / Annual Revenue (EBITDA for colocation is essentially revenue)
-    const totalCosts = dcCost; // Colocation has no GPU costs or interest
-    const paybackYears = revenue > 0 ? totalCosts / revenue : Infinity;
-    steps.push(`Payback: $${totalCosts.toFixed(2)}M / $${revenue.toFixed(2)}M/yr = ${paybackYears.toFixed(1)} years`);
-
-    return { netProfit, revenue, steps, paybackYears };
-  };
-
-  const calculateHyperscalerProfit = (data) => {
-    const steps = [];
-
-    // Calculate revenue
-    const revenue = data.toplineRevenue || 0;
-    steps.push(`Base Contract Revenue: $${revenue.toFixed(2)}M`);
-
-    const ebitda = revenue * ((data.ebitdaMargin || 0) / 100);
-    steps.push(`EBITDA: $${revenue.toFixed(2)}M × ${(data.ebitdaMargin || 0)}% = $${ebitda.toFixed(2)}M`);
-
-    const ebitdaPerYear = ebitda / (data.contractYears || 1);
-    steps.push(`EBITDA/yr: $${ebitda.toFixed(2)}M / ${(data.contractYears || 1)} yrs = $${ebitdaPerYear.toFixed(2)}M/yr`);
-
-    // GPU depreciation
-    let totalHardwareCost = 0;
-    if (data.hardwareMode === 'total') {
-      totalHardwareCost = data.totalHardwareCost || 0;
-    } else if (data.hardwareMode === 'gpus') {
-      // Calculate hardware cost from all GPU types
-      const hyperscaleCount = data.directGpuCount || 0;
-      const veraRubinCount = data.veraRubinGpuCount || 0;
-      const hyperscaleCost = hyperscaleCount * gpuPrices.hyperscaleBulkGB300 / 1000000;
-      const veraRubinCost = veraRubinCount * gpuPrices.veraRubinNVL144 / 1000000;
-      totalHardwareCost = hyperscaleCost + veraRubinCost;
-      if (hyperscaleCount > 0) {
-        steps.push(`Hyperscale Bulk GB300: ${hyperscaleCount.toLocaleString()} GPUs × $${gpuPrices.hyperscaleBulkGB300.toLocaleString()} = $${hyperscaleCost.toFixed(2)}M`);
-      }
-      if (veraRubinCount > 0) {
-        steps.push(`Hyperscale Bulk Vera Rubin NVL144: ${veraRubinCount.toLocaleString()} GPUs × $${gpuPrices.veraRubinNVL144.toLocaleString()} = $${veraRubinCost.toFixed(2)}M`);
-      }
-      steps.push(`Total Hardware Cost: $${totalHardwareCost.toFixed(2)}M`);
-    }
-
-    const gpuDepreciation = totalHardwareCost / (data.contractYears || 1);
-    steps.push(`GPU Depreciation: $${totalHardwareCost.toFixed(2)}M / ${(data.contractYears || 1)} yrs = $${gpuDepreciation.toFixed(2)}M/yr`);
-
-    // DC depreciation
-    let itLoad;
-    if (data.loadInputMode === 'direct') {
-      const itLoadValue = data.itLoad || 0;
-      itLoad = data.itLoadUnit === 'GW' ? itLoadValue * 1000 : itLoadValue;
-      steps.push(`IT Load: ${itLoad.toFixed(2)} MW`);
-    } else {
-      const sizeValue = data.sizeValue || 0;
-      const sizeMW = data.sizeUnit === 'GW' ? sizeValue * 1000 : sizeValue;
-      itLoad = sizeMW / (data.pue || 1);
-      steps.push(`IT Load: ${sizeMW.toFixed(2)} MW / ${(data.pue || 1)} = ${itLoad.toFixed(2)} MW`);
-    }
-
-    const dcCost = itLoad * (data.dcCostPerMW || 0);
-    const dcDepreciation = dcCost / (data.dcLifetime || 1);
-    steps.push(`DC Depreciation: (${itLoad.toFixed(2)} MW × $${(data.dcCostPerMW || 0)}M/MW) / ${(data.dcLifetime || 1)} yrs = $${dcDepreciation.toFixed(2)}M/yr`);
-
-    // Interest calculation - Amortized Monthly Payments
-    const prepayment = revenue * ((data.prepaymentPercent || 0) / 100);
-    steps.push(`Prepayment: $${revenue.toFixed(2)}M × ${(data.prepaymentPercent || 0)}% = $${prepayment.toFixed(2)}M`);
-
-    const initialDebt = totalHardwareCost - prepayment;
-    steps.push(`Initial Debt: $${totalHardwareCost.toFixed(2)}M - $${prepayment.toFixed(2)}M = $${initialDebt.toFixed(2)}M`);
-
-    // Calculate monthly payment using amortization formula
-    const annualRate = (data.interestRate || 0) / 100;
-    const monthlyRate = annualRate / 12;
-    const totalMonths = (data.debtYears || 1) * 12;
-    const monthlyPayment = initialDebt * (monthlyRate * Math.pow(1 + monthlyRate, totalMonths)) / (Math.pow(1 + monthlyRate, totalMonths) - 1);
-    const annualPayment = monthlyPayment * 12;
-    steps.push(`Monthly Payment (Amortized): $${monthlyPayment.toFixed(2)}M/month`);
-    steps.push(`Annual Payment: $${annualPayment.toFixed(2)}M/yr`);
-
-    // Calculate interest for each year (aggregated from monthly)
-    let remainingBalance = initialDebt;
-    let totalInterest = 0;
-    for (let year = 1; year <= (data.debtYears || 1); year++) {
-      let yearInterest = 0;
-      let yearPrincipal = 0;
-      const startBalance = remainingBalance;
-
-      // Calculate 12 months of payments
-      for (let month = 1; month <= 12; month++) {
-        const monthInterest = remainingBalance * monthlyRate;
-        const monthPrincipal = monthlyPayment - monthInterest;
-        yearInterest += monthInterest;
-        yearPrincipal += monthPrincipal;
-        remainingBalance -= monthPrincipal;
-      }
-
-      totalInterest += yearInterest;
-      steps.push(`Year ${year} - Start Balance: $${startBalance.toFixed(2)}M, Interest: $${yearInterest.toFixed(2)}M, Principal: $${yearPrincipal.toFixed(2)}M`);
-    }
-    steps.push(`Total Interest: $${totalInterest.toFixed(2)}M`);
-
-    const interestPerYear = totalInterest / data.debtYears;
-    steps.push(`Average Interest/yr: $${totalInterest.toFixed(2)}M / ${data.debtYears} yrs = $${interestPerYear.toFixed(2)}M/yr`);
-
-    const residualValue = totalHardwareCost * (data.residualValue / 100);
-    steps.push(`GPU Residual Value: $${totalHardwareCost.toFixed(2)}M × ${data.residualValue}% = $${residualValue.toFixed(2)}M`);
-
-    const residualValuePerYear = residualValue / data.contractYears;
-    steps.push(`GPU Residual Value/yr: $${residualValue.toFixed(2)}M / ${data.contractYears} yrs = $${residualValuePerYear.toFixed(2)}M/yr`);
-
-    const baseNetProfit = ebitdaPerYear - gpuDepreciation - dcDepreciation - interestPerYear + residualValuePerYear;
-    steps.push(`Base Earnings before Tax, SG&A: $${ebitdaPerYear.toFixed(2)}M - $${gpuDepreciation.toFixed(2)}M - $${dcDepreciation.toFixed(2)}M - $${interestPerYear.toFixed(2)}M + $${residualValuePerYear.toFixed(2)}M = $${baseNetProfit.toFixed(2)}M/yr`);
-
-    let netProfit = baseNetProfit;
-    let totalRevenue = revenue; // Track total revenue (base + additional if applicable)
-
-    // Improved Contract (only if enabled)
-    if (data.contractGapEnabled) {
-      steps.push(''); // Empty line for spacing
-      steps.push('--- Improved Contract ---');
-
-      // Get GPU count
-      const gpuCount = data.directGpuCount || 0;
-
-      let newRevenue;
-
-      // Check improvement mode (default is 'direct')
-      if (data.improvementMode === 'percentage') {
-        // Percentage of NBIS-MSFT mode
-        // Nebius Topline Scaled by GPU Count with hourly rate adjustment
-        const nebiusBase = 17400; // $17.4B
-        const defaultHourlyRate = 1940000000 / 365 / 76000 / 24;
-        const currentHourlyRate = gpuHourlyRates.hyperscaleBulkGB300;
-        const hourlyRateRatio = currentHourlyRate / defaultHourlyRate;
-        const gpuCountProratedNebius = (gpuCount / 100000) * nebiusBase * hourlyRateRatio;
-        steps.push(`Nebius Topline Scaled by GPU Count: (${gpuCount} / 100k) × $${nebiusBase}M × ${hourlyRateRatio.toFixed(4)} = $${gpuCountProratedNebius.toFixed(2)}M`);
-
-        // Improved Contracts Percentage (user input)
-        const improvedPercentage = data.improvedContractsPercentage || 0;
-
-        // New Negotiated Topline
-        newRevenue = gpuCountProratedNebius * (improvedPercentage / 100);
-        steps.push(`New Negotiated Topline: $${gpuCountProratedNebius.toFixed(2)}M × ${improvedPercentage}% = $${newRevenue.toFixed(2)}M`);
-      } else {
-        // Improvement Percentage mode (default)
-        const improvementPercentage = data.directImprovement || 0;
-
-        // New Negotiated Topline based on Base Contract Revenue
-        newRevenue = revenue * (1 + improvementPercentage / 100);
-        steps.push(`New Negotiated Topline: $${revenue.toFixed(2)}M × (1 + ${improvementPercentage}%) = $${newRevenue.toFixed(2)}M`);
-      }
-
-      // Additional Profit (5yrs)
-      const additionalProfit5yrs = newRevenue - revenue;
-      steps.push(`Additional Profit (5yrs): New Negotiated Topline - Base Contract Revenue = $${newRevenue.toFixed(2)}M - $${revenue.toFixed(2)}M = $${additionalProfit5yrs.toFixed(2)}M`);
-
-      // Additional Profit (annual)
-      const additionalProfit = additionalProfit5yrs / 5;
-      steps.push(`Additional Profit: Additional Profit (5yrs) / 5 = $${additionalProfit5yrs.toFixed(2)}M / 5 = $${additionalProfit.toFixed(2)}M/yr`);
-
-      // Net Profit (Base Net Profit + Additional Profit)
-      netProfit = baseNetProfit + additionalProfit;
-      steps.push(`Earnings before Tax, SG&A: Base Earnings before Tax, SG&A + Additional Profit = $${baseNetProfit.toFixed(2)}M/yr + $${additionalProfit.toFixed(2)}M/yr = $${netProfit.toFixed(2)}M/yr`);
-
-      // Update total revenue to include additional profit
-      totalRevenue = revenue + additionalProfit5yrs;
-      steps.push(`Revenue: Base Contract Revenue + Additional Profit (5yrs) = $${revenue.toFixed(2)}M + $${additionalProfit5yrs.toFixed(2)}M = $${totalRevenue.toFixed(2)}M`);
-    }
-
-    // Calculate annual revenue (divide total contract revenue by contract years)
-    const annualRevenue = totalRevenue / (data.contractYears || 1);
-
-    // Calculate payback years: Total Costs / Annual EBITDA
-    const totalCosts = totalHardwareCost + dcCost + totalInterest;
-    const paybackYears = ebitdaPerYear > 0 ? totalCosts / ebitdaPerYear : Infinity;
-    steps.push(`Payback: ($${totalHardwareCost.toFixed(2)}M + $${dcCost.toFixed(2)}M + $${totalInterest.toFixed(2)}M) / $${ebitdaPerYear.toFixed(2)}M/yr = ${paybackYears.toFixed(1)} years`);
-
-    return { netProfit, revenue: annualRevenue, steps, paybackYears };
-  };
-
-  const calculateIRENCloudProfit = (data, prices) => {
-    const steps = [];
-
-    const revenue = data.toplineRevenue || 0;
-    steps.push(`Revenue: $${revenue.toFixed(2)}M`);
-
-    const ebitda = revenue * ((data.ebitdaMargin || 0) / 100);
-    steps.push(`EBITDA: $${revenue.toFixed(2)}M × ${(data.ebitdaMargin || 0)}% = $${ebitda.toFixed(2)}M`);
-
-    // GPU depreciation
-    const gpus = data.gpus || {};
-    const calculatedGpuCost =
-      (gpus.b300 || 0) * prices.b300 / 1000000 +
-      (gpus.b200 || 0) * prices.b200 / 1000000 +
-      (gpus.mi350x || 0) * prices.mi350x / 1000000 +
-      (gpus.gb300 || 0) * prices.gb300 / 1000000 +
-      (gpus.hyperscaleBulkGB300 || 0) * prices.hyperscaleBulkGB300 / 1000000;
-
-    // Apply paid off percentage: reduce cost by the paid off amount
-    const gpuPaidOffPercent = data.gpuPaidOffPercent ?? 0;
-    const totalGpuCost = calculatedGpuCost * (1 - gpuPaidOffPercent / 100);
-
-    if (gpuPaidOffPercent > 0) {
-      steps.push(`Total GPU Cost: $${calculatedGpuCost.toFixed(2)}M × (1 - ${gpuPaidOffPercent}%) = $${totalGpuCost.toFixed(2)}M`);
-    } else {
-      steps.push(`Total GPU Cost: $${totalGpuCost.toFixed(2)}M`);
-    }
-
-    const gpuDepreciation = totalGpuCost / (data.gpuUsefulLife || 1);
-    steps.push(`GPU Depreciation: $${totalGpuCost.toFixed(2)}M / ${(data.gpuUsefulLife || 1)} yrs = $${gpuDepreciation.toFixed(2)}M/yr`);
-
-    // Calculate IT Load based on input mode
-    let itLoad;
-    if (data.loadInputMode === 'direct') {
-      const itLoadValue = data.itLoad || 0;
-      itLoad = data.itLoadUnit === 'GW' ? itLoadValue * 1000 : itLoadValue;
-      steps.push(`IT Load: ${itLoad.toFixed(2)} MW`);
-    } else {
-      const sizeValue = data.sizeValue || 0;
-      const sizeMW = data.sizeUnit === 'GW' ? sizeValue * 1000 : sizeValue;
-      itLoad = sizeMW / (data.pue || 1);
-      steps.push(`Total Load: ${sizeMW.toFixed(2)} MW`);
-      steps.push(`IT Load: ${sizeMW.toFixed(2)} MW / ${(data.pue || 1)} = ${itLoad.toFixed(2)} MW`);
-    }
-
-    // DC depreciation
-    let dcDepreciation = 0;
-    let dcCost = 0;
-    if (data.dcType === 'retrofit') {
-      dcCost = itLoad * (data.retrofitCapexPerMW || 0);
-      dcDepreciation = dcCost / (data.dcLifetime || 20);
-      steps.push(`Retrofit Capex: ${itLoad.toFixed(2)} MW × $${(data.retrofitCapexPerMW || 0)}M/MW = $${dcCost.toFixed(2)}M`);
-      steps.push(`DC Depreciation (Retrofit): $${dcCost.toFixed(2)}M / ${(data.dcLifetime || 20)} yrs = $${dcDepreciation.toFixed(2)}M/yr`);
-    } else {
-      const dcCostPerMW = data.dcCostPerMW || 0;
-      dcCost = itLoad * dcCostPerMW;
-      dcDepreciation = dcCost / (data.dcLifetime || 1);
-      steps.push(`DC Cost: ${itLoad.toFixed(2)} MW × $${dcCostPerMW}M/MW = $${dcCost.toFixed(2)}M`);
-      steps.push(`DC Depreciation: $${dcCost.toFixed(2)}M / ${(data.dcLifetime || 1)} yrs = $${dcDepreciation.toFixed(2)}M/yr`);
-    }
-
-    // Interest calculation - Amortized Monthly Payments
-    const initialDebt = totalGpuCost;
-    steps.push(`Initial Debt: $${initialDebt.toFixed(2)}M`);
-
-    // Calculate monthly payment using amortization formula
-    const annualRate = (data.interestRate || 0) / 100;
-    const monthlyRate = annualRate / 12;
-    const totalMonths = (data.debtYears || 1) * 12;
-    const monthlyPayment = initialDebt * (monthlyRate * Math.pow(1 + monthlyRate, totalMonths)) / (Math.pow(1 + monthlyRate, totalMonths) - 1);
-    const annualPayment = monthlyPayment * 12;
-    steps.push(`Monthly Payment (Amortized): $${monthlyPayment.toFixed(2)}M/month`);
-    steps.push(`Annual Payment: $${annualPayment.toFixed(2)}M/yr`);
-
-    // Calculate interest for each year (aggregated from monthly)
-    let remainingBalance = initialDebt;
-    let totalInterest = 0;
-    for (let year = 1; year <= (data.debtYears || 1); year++) {
-      let yearInterest = 0;
-      let yearPrincipal = 0;
-      const startBalance = remainingBalance;
-
-      // Calculate 12 months of payments
-      for (let month = 1; month <= 12; month++) {
-        const monthInterest = remainingBalance * monthlyRate;
-        const monthPrincipal = monthlyPayment - monthInterest;
-        yearInterest += monthInterest;
-        yearPrincipal += monthPrincipal;
-        remainingBalance -= monthPrincipal;
-      }
-
-      totalInterest += yearInterest;
-      steps.push(`Year ${year}: Interest = $${yearInterest.toFixed(2)}M, Principal = $${yearPrincipal.toFixed(2)}M, Ending Balance = $${remainingBalance.toFixed(2)}M`);
-    }
-
-    const averageInterestPerYear = totalInterest / (data.debtYears || 1);
-    steps.push(`Average Interest/yr: $${totalInterest.toFixed(2)}M / ${(data.debtYears || 1)} yrs = $${averageInterestPerYear.toFixed(2)}M/yr`);
-
-    const residualValue = totalGpuCost * ((data.residualValue || 0) / 100);
-    steps.push(`GPU Residual Value: $${totalGpuCost.toFixed(2)}M × ${(data.residualValue || 0)}% = $${residualValue.toFixed(2)}M`);
-
-    const residualValuePerYear = residualValue / (data.gpuUsefulLife || 1);
-    steps.push(`GPU Residual Value/yr: $${residualValue.toFixed(2)}M / ${(data.gpuUsefulLife || 1)} yrs = $${residualValuePerYear.toFixed(2)}M/yr`);
-
-    const netProfit = ebitda - gpuDepreciation - dcDepreciation - averageInterestPerYear + residualValuePerYear;
-    steps.push(`Earnings before Tax, SG&A: $${ebitda.toFixed(2)}M - $${gpuDepreciation.toFixed(2)}M - $${dcDepreciation.toFixed(2)}M - $${averageInterestPerYear.toFixed(2)}M + $${residualValuePerYear.toFixed(2)}M = $${netProfit.toFixed(2)}M/yr`);
-
-    // Calculate payback years: Total Costs / Annual EBITDA
-    const totalCosts = totalGpuCost + dcCost + totalInterest;
-    const paybackYears = ebitda > 0 ? totalCosts / ebitda : Infinity;
-    steps.push(`Payback: ($${totalGpuCost.toFixed(2)}M + $${dcCost.toFixed(2)}M + $${totalInterest.toFixed(2)}M) / $${ebitda.toFixed(2)}M/yr = ${paybackYears.toFixed(1)} years`);
-
-    return { netProfit, revenue, steps, paybackYears };
-  };
+  // Helper to calculate site profit using imported utility
+  const getSiteProfit = (site) => calculateSiteNetProfit(site, gpuPrices, gpuHourlyRates);
 
   // Filter sites based on selected scenario
   // Show specific sites only in certain scenarios
@@ -1043,13 +695,13 @@ function App() {
 
   // Calculate total annual revenue
   const totalAnnualRevenue = activeSites.reduce((sum, site) => {
-    const result = calculateSiteNetProfit(site);
+    const result = getSiteProfit(site);
     return sum + result.revenue;
   }, 0);
 
   // Calculate total net profits
   const totalNetProfit = activeSites.reduce((sum, site) => {
-    const result = calculateSiteNetProfit(site);
+    const result = getSiteProfit(site);
     return sum + result.netProfit;
   }, 0);
 
@@ -1074,25 +726,6 @@ function App() {
 
   // Calculate share price
   const sharePrice = fullyDilutedShares > 0 ? marketCap / fullyDilutedShares : 0;
-
-  // Helper function to format values (M or B)
-  const formatValue = (value, prefix = '$', suffix = '') => {
-    const numValue = Number(value) || 0;
-    if (!isFinite(numValue)) return `${prefix}0M${suffix}`;
-    if (numValue >= 1000) {
-      return `${prefix}${(numValue / 1000).toFixed(2)}B${suffix}`;
-    }
-    return `${prefix}${numValue.toFixed(0)}M${suffix}`;
-  };
-
-  const formatShares = (value) => {
-    const numValue = Number(value) || 0;
-    if (!isFinite(numValue)) return '0M';
-    if (numValue >= 1000) {
-      return `${(numValue / 1000).toFixed(2)}B`;
-    }
-    return `${numValue.toFixed(1)}M`;
-  };
 
   return (
     <div className="app">
@@ -1124,29 +757,29 @@ function App() {
           </div>
 
           <div className="calc-steps">
-            <div style={{ fontWeight: 'bold', marginBottom: '0.5rem' }}>Annual Revenue Split:</div>
+            <div className="calc-steps-section-header">Annual Revenue Split:</div>
             {activeSites.filter(site => site.enabled).map(site => {
-              const result = calculateSiteNetProfit(site);
+              const result = getSiteProfit(site);
               return (
                 <div key={site.id}>
                   {site.name}: {formatValue(result.revenue)}/yr
                 </div>
               );
             })}
-            <div style={{ marginTop: '0.5rem' }}>Total Annual Revenue = {formatValue(totalAnnualRevenue)}/yr</div>
+            <div className="calc-steps-total">Total Annual Revenue = {formatValue(totalAnnualRevenue)}/yr</div>
 
-            <div style={{ fontWeight: 'bold', marginTop: '1rem', marginBottom: '0.5rem' }}>Earnings before Tax, SG&A Split:</div>
+            <div className="calc-steps-section-header calc-steps-section-header-margin">Earnings before Tax, SG&A Split:</div>
             {activeSites.filter(site => site.enabled).map(site => {
-              const result = calculateSiteNetProfit(site);
+              const result = getSiteProfit(site);
               return (
                 <div key={site.id}>
                   {site.name}: {formatValue(result.netProfit)}/yr
                 </div>
               );
             })}
-            <div style={{ marginTop: '0.5rem' }}>Total Earnings before Tax, SG&A = {formatValue(totalNetProfit)}/yr</div>
+            <div className="calc-steps-total">Total Earnings before Tax, SG&A = {formatValue(totalNetProfit)}/yr</div>
 
-            <div style={{ fontWeight: 'bold', marginTop: '1rem', marginBottom: '0.5rem' }}>Net Profit and Share Price Calculations:</div>
+            <div className="calc-steps-section-header calc-steps-section-header-margin">Net Profit and Share Price Calculations:</div>
             <div>Pre-tax Net Profits = Earnings before Tax, SG&A - SG&A = {formatValue(totalNetProfit)} - {formatValue(sgaExpense)} = {formatValue(preTaxNetProfits)}</div>
             <div>Corporate Tax = Pre-tax Net Profits × Corporate Tax Rate = {formatValue(preTaxNetProfits)} × {corporateTaxRate}% = {formatValue(corporateTax)}</div>
             <div>Tax Abatement and Tax Loss Realization = Corporate Tax × Tax Abatement and Tax Loss Realization Rate = {formatValue(corporateTax)} × {taxAbatementRate}% = {formatValue(taxAbatement)}</div>
@@ -1164,14 +797,14 @@ function App() {
             <button onClick={collapseAll} className="control-btn">Collapse All</button>
           </div>
           <div className="control-btn-right">
-            <button onClick={downloadCSV} className="control-btn">Download Inputs</button>
+            <button onClick={downloadJSON} className="control-btn">Download Inputs</button>
             <button onClick={() => document.getElementById('file-upload').click()} className="control-btn">Upload Inputs</button>
             <input
               id="file-upload"
               type="file"
               accept=".json"
               onChange={uploadCSV}
-              style={{ display: 'none' }}
+              className="hidden-file-input"
             />
           </div>
         </div>
@@ -1185,7 +818,7 @@ function App() {
 
           {scenariosOpen && (
             <div className="accordion-content">
-              <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+              <div className="scenario-buttons-container">
             <button
               onClick={() => loadScenario('canada')}
               className={`scenario-btn ${selectedScenario === 'canada' ? 'selected' : ''}`}
@@ -1237,8 +870,7 @@ function App() {
               <button
                 key={scenario.id}
                 onClick={() => loadCustomScenario(scenario)}
-                className={`scenario-btn ${selectedScenario === scenario.id ? 'selected' : ''}`}
-                style={{ position: 'relative' }}
+                className={`scenario-btn scenario-btn-custom ${selectedScenario === scenario.id ? 'selected' : ''}`}
               >
                 <div>
                   <div>{scenario.name}</div>
@@ -1249,21 +881,7 @@ function App() {
                     e.stopPropagation();
                     deleteCustomScenario(scenario.id);
                   }}
-                  style={{
-                    position: 'absolute',
-                    top: '5px',
-                    right: '5px',
-                    background: '#dc3545',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '50%',
-                    width: '24px',
-                    height: '24px',
-                    cursor: 'pointer',
-                    fontSize: '14px',
-                    lineHeight: '1',
-                    padding: 0
-                  }}
+                  className="scenario-delete-btn"
                   title="Delete scenario"
                 >
                   ×
@@ -1274,8 +892,7 @@ function App() {
             {/* Add Scenario Button */}
             <button
               onClick={() => setShowScenarioModal(true)}
-              className="scenario-btn"
-              style={{ borderStyle: 'dashed' }}
+              className="scenario-btn scenario-btn-dashed"
             >
               <div>
                 <div>+ Add Custom</div>
@@ -1289,30 +906,12 @@ function App() {
 
         {/* Add Scenario Modal */}
         {showScenarioModal && (
-          <div style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            background: 'rgba(0,0,0,0.5)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 1000
-          }}>
-            <div style={{
-              background: 'white',
-              padding: '2rem',
-              borderRadius: '12px',
-              maxWidth: '500px',
-              width: '90%',
-              boxShadow: '0 4px 20px rgba(0,0,0,0.3)'
-            }}>
-              <h3 style={{ marginTop: 0, color: '#1a1a1a' }}>Create Custom Scenario</h3>
+          <div className="modal-overlay">
+            <div className="modal-content">
+              <h3 className="modal-title">Create Custom Scenario</h3>
 
-              <div style={{ marginBottom: '1.5rem' }}>
-                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>
+              <div className="modal-input-group">
+                <label className="modal-label">
                   Scenario Name
                 </label>
                 <input
@@ -1320,46 +919,24 @@ function App() {
                   value={newScenarioName}
                   onChange={(e) => setNewScenarioName(e.target.value)}
                   placeholder="Enter scenario name"
-                  style={{
-                    width: '100%',
-                    padding: '0.75rem',
-                    border: '2px solid #e9ecef',
-                    borderRadius: '8px',
-                    fontSize: '1rem'
-                  }}
+                  className="modal-input"
                 />
               </div>
 
-              <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
+              <div className="modal-buttons">
                 <button
                   onClick={() => {
                     setShowScenarioModal(false);
                     setNewScenarioName('');
                   }}
-                  style={{
-                    padding: '0.75rem 1.5rem',
-                    background: '#6c757d',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '8px',
-                    fontWeight: 600,
-                    cursor: 'pointer'
-                  }}
+                  className="modal-btn modal-btn-cancel"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={saveCustomScenario}
                   disabled={!newScenarioName.trim()}
-                  style={{
-                    padding: '0.75rem 1.5rem',
-                    background: newScenarioName.trim() ? '#71DA80' : '#e9ecef',
-                    color: newScenarioName.trim() ? '#1a1a1a' : '#6c757d',
-                    border: 'none',
-                    borderRadius: '8px',
-                    fontWeight: 600,
-                    cursor: newScenarioName.trim() ? 'pointer' : 'not-allowed'
-                  }}
+                  className="modal-btn modal-btn-save"
                 >
                   Save Scenario
                 </button>
@@ -1512,7 +1089,7 @@ function App() {
           </div>
 
           {activeSites.map(site => {
-            const result = calculateSiteNetProfit(site);
+            const result = getSiteProfit(site);
 
             return (
               <div key={site.id} className={`site-wrapper ${!site.enabled ? 'disabled' : ''}`}>
@@ -1559,7 +1136,7 @@ function App() {
         </div>
 
         {/* Version Footer */}
-        <div style={{ textAlign: 'center', padding: '2rem 0', fontSize: '0.85rem', color: '#666' }}>
+        <div className="version-footer">
           Version {packageJson.version}
         </div>
       </div>

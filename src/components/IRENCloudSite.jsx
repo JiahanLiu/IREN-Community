@@ -42,9 +42,12 @@ function IRENCloudSite({ site, result, gpuPrices, gpuHourlyRates, updateSite, up
   };
 
   // Auto-scale GPUs when autoscale is enabled and load changes
+  // Note: We intentionally only react to specific site.data properties that affect DC load,
+  // not to the internal functions. This prevents infinite loops while still updating GPUs
+  // when relevant inputs change.
   useEffect(() => {
     if (site.data.autoscaleGPUs) {
-      const scaledGpus = calculateScaledGPUs();""
+      const scaledGpus = calculateScaledGPUs();
 
       // Only update if GPUs have actually changed
       const currentGpus = site.data.gpus;
@@ -61,8 +64,10 @@ function IRENCloudSite({ site, result, gpuPrices, gpuHourlyRates, updateSite, up
         }
       }
     }
-  }, [site.data.autoscaleGPUs, site.data.loadInputMode, site.data.sizeValue, site.data.sizeUnit,
-      site.data.pue, site.data.itLoad, site.data.itLoadUnit]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [site.id, site.data.autoscaleGPUs, site.data.loadInputMode, site.data.sizeValue,
+      site.data.sizeUnit, site.data.pue, site.data.itLoad, site.data.itLoadUnit,
+      site.data.autoCalculateRevenue]);
 
   const handleNumberChange = (field, value) => {
     update(field, value === '' ? '' : parseFloat(value));

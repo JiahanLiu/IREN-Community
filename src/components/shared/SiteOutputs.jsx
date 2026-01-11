@@ -1,10 +1,7 @@
 import React from 'react';
+import { formatPaybackYears } from '../../utils/formatters';
 
 function SiteOutputs({ result }) {
-  const formatPaybackYears = (years) => {
-    if (!years || years === Infinity || isNaN(years)) return 'N/A';
-    return `${years.toFixed(1)} Years`;
-  };
 
   return (
     <div className="site-outputs">
