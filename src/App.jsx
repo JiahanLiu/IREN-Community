@@ -933,7 +933,7 @@ function App() {
               className={`scenario-btn ${selectedScenario === '2027-h110-colo' ? 'selected' : ''}`}
             >
               <div>
-                <div>Frans 2027: Canada + H1-10</div>
+                <div>Jim 2027: Canada + H1-10</div>
                 <div>+ SW1 400MW + OK</div>
               </div>
             </button>

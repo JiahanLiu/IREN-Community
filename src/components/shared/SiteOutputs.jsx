@@ -22,6 +22,10 @@ function SiteOutputs({ result }) {
         <span className="output-label">20yr-Cashflow/MW</span>
         <span className="output-value earnings">${cashflowPerMW.toFixed(2)}M/MW</span>
       </div>
+      <div className="output-item">
+        <span className="output-label">Payback Period</span>
+        <span className="output-value earnings">{result.paybackPeriod === Infinity || isNaN(result.paybackPeriod) ? 'N/A' : `${result.paybackPeriod.toFixed(1)} Years`}</span>
+      </div>
     </div>
   );
 }

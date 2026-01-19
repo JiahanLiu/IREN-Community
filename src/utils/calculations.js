@@ -52,7 +52,11 @@ export const calculateColocationProfit = (data) => {
   const paybackYears = cashflowFraction * 20;
   steps.push(`Positive Cashflow: ($${totalCashflow20yr.toFixed(2)}M / $${revenue20yr.toFixed(2)}M) × 20 = ${paybackYears.toFixed(1)} out of 20 years`);
 
-  return { netProfit, revenue, steps, paybackYears, totalCashflow20yr, itLoad };
+  // Payback Period: DC Cost / Annual Revenue
+  const paybackPeriod = revenue > 0 ? dcCost / revenue : Infinity;
+  steps.push(`Payback Period: $${dcCost.toFixed(2)}M / $${revenue.toFixed(2)}M/yr = ${paybackPeriod.toFixed(1)} years`);
+
+  return { netProfit, revenue, steps, paybackYears, totalCashflow20yr, itLoad, paybackPeriod };
 };
 
 /**
@@ -301,7 +305,17 @@ export const calculateHyperscalerProfit = (data, gpuPrices, gpuHourlyRates) => {
   const paybackYears = cashflowFraction * 20;
   steps.push(`Positive Cashflow: ($${totalCashflow20yr.toFixed(2)}M / $${totalEbitda20yr.toFixed(2)}M) × 20 = ${paybackYears.toFixed(1)} out of 20 years`);
 
-  return { netProfit, revenue: annualRevenue, steps, paybackYears, totalCashflow20yr, itLoad };
+  // Payback Period: (GPU Cost + DC Cost + Total Interest) / (EBITDA/yr + Additional Profit/yr)
+  const totalCosts = totalHardwareCost + dcCost + totalInterest;
+  const annualCashflow = ebitdaPerYear + additionalProfitPerYear;
+  const paybackPeriod = annualCashflow > 0 ? totalCosts / annualCashflow : Infinity;
+  if (additionalProfitPerYear > 0) {
+    steps.push(`Payback Period: ($${totalHardwareCost.toFixed(2)}M + $${dcCost.toFixed(2)}M + $${totalInterest.toFixed(2)}M) / ($${ebitdaPerYear.toFixed(2)}M/yr + $${additionalProfitPerYear.toFixed(2)}M/yr) = ${paybackPeriod.toFixed(1)} years`);
+  } else {
+    steps.push(`Payback Period: ($${totalHardwareCost.toFixed(2)}M + $${dcCost.toFixed(2)}M + $${totalInterest.toFixed(2)}M) / $${ebitdaPerYear.toFixed(2)}M/yr = ${paybackPeriod.toFixed(1)} years`);
+  }
+
+  return { netProfit, revenue: annualRevenue, steps, paybackYears, totalCashflow20yr, itLoad, paybackPeriod };
 };
 
 /**
@@ -427,7 +441,12 @@ export const calculateIRENCloudProfit = (data, gpuPrices) => {
   const paybackYears = cashflowFraction * 20;
   steps.push(`Positive Cashflow: ($${totalCashflow20yr.toFixed(2)}M / $${ebitda20yr.toFixed(2)}M) × 20 = ${paybackYears.toFixed(1)} out of 20 years`);
 
-  return { netProfit, revenue, steps, paybackYears, totalCashflow20yr, itLoad };
+  // Payback Period: (GPU Cost + DC Cost + Total Interest) / EBITDA
+  const totalCosts = totalGpuCost + dcCost + totalInterest;
+  const paybackPeriod = ebitda > 0 ? totalCosts / ebitda : Infinity;
+  steps.push(`Payback Period: ($${totalGpuCost.toFixed(2)}M + $${dcCost.toFixed(2)}M + $${totalInterest.toFixed(2)}M) / $${ebitda.toFixed(2)}M/yr = ${paybackPeriod.toFixed(1)} years`);
+
+  return { netProfit, revenue, steps, paybackYears, totalCashflow20yr, itLoad, paybackPeriod };
 };
 
 /**
@@ -438,7 +457,7 @@ export const calculateIRENCloudProfit = (data, gpuPrices) => {
  * @returns {Object} Result with netProfit, revenue, steps, and paybackYears
  */
 export const calculateSiteNetProfit = (site, gpuPrices, gpuHourlyRates) => {
-  if (!site.enabled) return { netProfit: 0, revenue: 0, steps: [], paybackYears: 0, totalCashflow20yr: 0, itLoad: 0 };
+  if (!site.enabled) return { netProfit: 0, revenue: 0, steps: [], paybackYears: 0, totalCashflow20yr: 0, itLoad: 0, paybackPeriod: 0 };
 
   if (site.type === 'Colocation') {
     return calculateColocationProfit(site.data);
@@ -447,5 +466,5 @@ export const calculateSiteNetProfit = (site, gpuPrices, gpuHourlyRates) => {
   } else if (site.type === 'IREN Cloud') {
     return calculateIRENCloudProfit(site.data, gpuPrices);
   }
-  return { netProfit: 0, revenue: 0, steps: [], paybackYears: 0, totalCashflow20yr: 0, itLoad: 0 };
+  return { netProfit: 0, revenue: 0, steps: [], paybackYears: 0, totalCashflow20yr: 0, itLoad: 0, paybackPeriod: 0 };
 };
