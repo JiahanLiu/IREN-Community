@@ -52,7 +52,7 @@ export const calculateColocationProfit = (data) => {
   const paybackYears = cashflowFraction * 20;
   steps.push(`Positive Cashflow: ($${totalCashflow20yr.toFixed(2)}M / $${revenue20yr.toFixed(2)}M) × 20 = ${paybackYears.toFixed(1)} out of 20 years`);
 
-  return { netProfit, revenue, steps, paybackYears };
+  return { netProfit, revenue, steps, paybackYears, totalCashflow20yr, itLoad };
 };
 
 /**
@@ -297,7 +297,7 @@ export const calculateHyperscalerProfit = (data, gpuPrices, gpuHourlyRates) => {
   const paybackYears = cashflowFraction * 20;
   steps.push(`Positive Cashflow: ($${totalCashflow20yr.toFixed(2)}M / $${totalEbitda20yr.toFixed(2)}M) × 20 = ${paybackYears.toFixed(1)} out of 20 years`);
 
-  return { netProfit, revenue: annualRevenue, steps, paybackYears };
+  return { netProfit, revenue: annualRevenue, steps, paybackYears, totalCashflow20yr, itLoad };
 };
 
 /**
@@ -419,7 +419,7 @@ export const calculateIRENCloudProfit = (data, gpuPrices) => {
   const paybackYears = cashflowFraction * 20;
   steps.push(`Positive Cashflow: ($${totalCashflow20yr.toFixed(2)}M / $${ebitda20yr.toFixed(2)}M) × 20 = ${paybackYears.toFixed(1)} out of 20 years`);
 
-  return { netProfit, revenue, steps, paybackYears };
+  return { netProfit, revenue, steps, paybackYears, totalCashflow20yr, itLoad };
 };
 
 /**
@@ -430,7 +430,7 @@ export const calculateIRENCloudProfit = (data, gpuPrices) => {
  * @returns {Object} Result with netProfit, revenue, steps, and paybackYears
  */
 export const calculateSiteNetProfit = (site, gpuPrices, gpuHourlyRates) => {
-  if (!site.enabled) return { netProfit: 0, revenue: 0, steps: [], paybackYears: 0 };
+  if (!site.enabled) return { netProfit: 0, revenue: 0, steps: [], paybackYears: 0, totalCashflow20yr: 0, itLoad: 0 };
 
   if (site.type === 'Colocation') {
     return calculateColocationProfit(site.data);
@@ -439,5 +439,5 @@ export const calculateSiteNetProfit = (site, gpuPrices, gpuHourlyRates) => {
   } else if (site.type === 'IREN Cloud') {
     return calculateIRENCloudProfit(site.data, gpuPrices);
   }
-  return { netProfit: 0, revenue: 0, steps: [], paybackYears: 0 };
+  return { netProfit: 0, revenue: 0, steps: [], paybackYears: 0, totalCashflow20yr: 0, itLoad: 0 };
 };
