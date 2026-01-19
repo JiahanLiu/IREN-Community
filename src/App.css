@@ -789,10 +789,7 @@
 }
 
 .version-footer .disclaimer {
-  margin-top: 0.5rem;
-  font-size: 0.75rem;
-  color: #999;
-  font-style: italic;
+  margin-bottom: 0.5rem;
 }
 
 /* Responsive */

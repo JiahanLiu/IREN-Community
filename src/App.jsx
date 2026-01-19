@@ -1219,8 +1219,8 @@ function App() {
 
         {/* Version Footer */}
         <div className="version-footer">
-          Version {packageJson.version}
           <div className="disclaimer">Not Financial Advice</div>
+          Version {packageJson.version}
         </div>
       </div>
     </div>
