@@ -3,13 +3,14 @@
  */
 
 /**
- * Format payback years for display
- * @param {number} years - Payback period in years
- * @returns {string} Formatted payback string
+ * Format positive cashflow years for display
+ * @param {number} years - Years to positive cashflow (out of 20)
+ * @returns {string} Formatted string like "5 out of 20 years"
  */
 export const formatPaybackYears = (years) => {
-  if (!years || years === Infinity || isNaN(years)) return 'N/A';
-  return `${years.toFixed(1)} Years`;
+  if (!years || years === Infinity || isNaN(years) || years < 0) return 'N/A';
+  if (years > 20) return '> 20 years';
+  return `${years.toFixed(1)} out of 20 years`;
 };
 
 /**

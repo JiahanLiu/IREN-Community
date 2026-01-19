@@ -14,7 +14,7 @@ function SiteOutputs({ result }) {
         <span className="output-value earnings">${result.netProfit.toFixed(2)}M/yr</span>
       </div>
       <div className="output-item">
-        <span className="output-label">Positive Cashflow After</span>
+        <span className="output-label">Positive Cashflow</span>
         <span className="output-value earnings">{formatPaybackYears(result.paybackYears)}</span>
       </div>
     </div>

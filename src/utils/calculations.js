@@ -37,10 +37,20 @@ export const calculateColocationProfit = (data) => {
   const netProfit = revenue - dcDepreciation;
   steps.push(`Earnings before Tax, SG&A: $${revenue.toFixed(2)}M - $${dcDepreciation.toFixed(2)}M = $${netProfit.toFixed(2)}M/yr`);
 
-  // Calculate payback years: Total Costs / Annual Revenue (EBITDA for colocation is essentially revenue)
-  const totalCosts = dcCost; // Colocation has no GPU costs or interest
-  const paybackYears = revenue > 0 ? totalCosts / revenue : Infinity;
-  steps.push(`Payback: $${totalCosts.toFixed(2)}M / $${revenue.toFixed(2)}M/yr = ${paybackYears.toFixed(1)} years`);
+  // Calculate Positive Cashflow Years (out of 20 years)
+  // Formula: (Revenue * 20 - DC Cost) / (Revenue * 20) * 20
+  // For Colocation: GPU Cost = 0, Interest = 0, Additional Profit = 0
+  steps.push('\u00A0');
+  steps.push('--- Positive Cashflow ---');
+  const revenue20yr = revenue * 20;
+  steps.push(`20-Year Revenue: $${revenue.toFixed(2)}M/yr × 20 = $${revenue20yr.toFixed(2)}M`);
+
+  const totalCashflow20yr = revenue20yr - dcCost;
+  steps.push(`20-Year Net Cashflow: $${revenue20yr.toFixed(2)}M - $${dcCost.toFixed(2)}M = $${totalCashflow20yr.toFixed(2)}M`);
+
+  const cashflowFraction = revenue20yr > 0 ? totalCashflow20yr / revenue20yr : 0;
+  const paybackYears = cashflowFraction * 20;
+  steps.push(`Positive Cashflow: ($${totalCashflow20yr.toFixed(2)}M / $${revenue20yr.toFixed(2)}M) × 20 = ${paybackYears.toFixed(1)} out of 20 years`);
 
   return { netProfit, revenue, steps, paybackYears };
 };
@@ -248,15 +258,44 @@ export const calculateHyperscalerProfit = (data, gpuPrices, gpuHourlyRates) => {
   // Calculate annual revenue (divide total contract revenue by contract years)
   const annualRevenue = totalRevenue / (data.contractYears || 1);
 
-  // Calculate payback years: (GPU Cost + DC Cost + Interest) / (EBITDA + Additional Profit)
-  const totalCosts = totalHardwareCost + dcCost + totalInterest;
-  const annualCashflow = ebitdaPerYear + additionalProfitPerYear;
-  const paybackYears = annualCashflow > 0 ? totalCosts / annualCashflow : Infinity;
-  if (additionalProfitPerYear > 0) {
-    steps.push(`Payback: ($${totalHardwareCost.toFixed(2)}M + $${dcCost.toFixed(2)}M + $${totalInterest.toFixed(2)}M) / ($${ebitdaPerYear.toFixed(2)}M/yr + $${additionalProfitPerYear.toFixed(2)}M/yr) = ${paybackYears.toFixed(1)} years`);
-  } else {
-    steps.push(`Payback: ($${totalHardwareCost.toFixed(2)}M + $${dcCost.toFixed(2)}M + $${totalInterest.toFixed(2)}M) / $${ebitdaPerYear.toFixed(2)}M/yr = ${paybackYears.toFixed(1)} years`);
+  // Calculate Positive Cashflow Years (out of 20 years)
+  // Formula: (EBITDA * 4 - GPU Cost * 4 - DC Cost - Total Interest * 4 + Additional Profit * 4) / (EBITDA * 4 + Additional Profit * 4) * 20
+  // Where: EBITDA is 5-year total, × 4 for 20-year projection
+  // DC Cost has no multiplier (lasts 20 years)
+  steps.push('\u00A0');
+  steps.push('--- Positive Cashflow ---');
+
+  const ebitda20yr = ebitda * 4;
+  steps.push(`20-Year EBITDA: $${ebitda.toFixed(2)}M × 4 = $${ebitda20yr.toFixed(2)}M`);
+
+  const gpuCost20yr = totalHardwareCost * 4;
+  steps.push(`20-Year GPU Cost: $${totalHardwareCost.toFixed(2)}M × 4 = $${gpuCost20yr.toFixed(2)}M`);
+
+  steps.push(`20-Year DC Cost: $${dcCost.toFixed(2)}M `);
+
+  const interest20yr = totalInterest * 4;
+  steps.push(`20-Year Interest: $${totalInterest.toFixed(2)}M × 4 = $${interest20yr.toFixed(2)}M`);
+
+  // Calculate additional profit for 20 years (additionalProfit5yrs is already 5-year value)
+  const additionalProfit5yrs = additionalProfitPerYear * 5;
+  const additionalProfit20yr = additionalProfit5yrs * 4;
+  if (additionalProfit20yr > 0) {
+    steps.push(`20-Year Additional Profit: $${additionalProfit5yrs.toFixed(2)}M × 4 = $${additionalProfit20yr.toFixed(2)}M`);
   }
+
+  const totalCashflow20yr = ebitda20yr - gpuCost20yr - dcCost - interest20yr + additionalProfit20yr;
+  const totalEbitda20yr = ebitda20yr + additionalProfit20yr;
+
+  if (additionalProfit20yr > 0) {
+    steps.push(`20-Year Net Cashflow: $${ebitda20yr.toFixed(2)}M - $${gpuCost20yr.toFixed(2)}M - $${dcCost.toFixed(2)}M - $${interest20yr.toFixed(2)}M + $${additionalProfit20yr.toFixed(2)}M = $${totalCashflow20yr.toFixed(2)}M`);
+    steps.push(`20-Year Total EBITDA: $${ebitda20yr.toFixed(2)}M + $${additionalProfit20yr.toFixed(2)}M = $${totalEbitda20yr.toFixed(2)}M`);
+  } else {
+    steps.push(`20-Year Net Cashflow: $${ebitda20yr.toFixed(2)}M - $${gpuCost20yr.toFixed(2)}M - $${dcCost.toFixed(2)}M - $${interest20yr.toFixed(2)}M = $${totalCashflow20yr.toFixed(2)}M`);
+  }
+
+  const cashflowFraction = totalEbitda20yr > 0 ? totalCashflow20yr / totalEbitda20yr : 0;
+  const paybackYears = cashflowFraction * 20;
+  steps.push(`Positive Cashflow: ($${totalCashflow20yr.toFixed(2)}M / $${totalEbitda20yr.toFixed(2)}M) × 20 = ${paybackYears.toFixed(1)} out of 20 years`);
 
   return { netProfit, revenue: annualRevenue, steps, paybackYears };
 };
@@ -354,10 +393,31 @@ export const calculateIRENCloudProfit = (data, gpuPrices) => {
   const netProfit = ebitda - gpuDepreciation - dcDepreciation - averageInterestPerYear + residualValuePerYear;
   steps.push(`Earnings before Tax, SG&A: $${ebitda.toFixed(2)}M - $${gpuDepreciation.toFixed(2)}M - $${dcDepreciation.toFixed(2)}M - $${averageInterestPerYear.toFixed(2)}M + $${residualValuePerYear.toFixed(2)}M = $${netProfit.toFixed(2)}M/yr`);
 
-  // Calculate payback years: (GPU Cost + DC Cost + Interest) / EBITDA
-  const totalCosts = totalGpuCost + dcCost + totalInterest;
-  const paybackYears = ebitda > 0 ? totalCosts / ebitda : Infinity;
-  steps.push(`Payback: ($${totalGpuCost.toFixed(2)}M + $${dcCost.toFixed(2)}M + $${totalInterest.toFixed(2)}M) / $${ebitda.toFixed(2)}M/yr = ${paybackYears.toFixed(1)} years`);
+  // Calculate Positive Cashflow Years (out of 20 years)
+  // Formula: (EBITDA * 20 - GPU Cost * 4 - DC Cost - Total Interest * 4) / (EBITDA * 20) * 20
+  // Where: EBITDA is annual, × 20 for 20-year projection
+  // GPU Cost and Interest × 4 for 4 replacement/debt cycles
+  // DC Cost has no multiplier (lasts 20 years)
+  steps.push('\u00A0');
+  steps.push('--- Positive Cashflow ---');
+
+  const ebitda20yr = ebitda * 20;
+  steps.push(`20-Year EBITDA: $${ebitda.toFixed(2)}M/yr × 20 = $${ebitda20yr.toFixed(2)}M`);
+
+  const gpuCost20yr = totalGpuCost * 4;
+  steps.push(`20-Year GPU Cost: $${totalGpuCost.toFixed(2)}M × 4 = $${gpuCost20yr.toFixed(2)}M`);
+
+  steps.push(`20-Year DC Cost: $${dcCost.toFixed(2)}M `);
+
+  const interest20yr = totalInterest * 4;
+  steps.push(`20-Year Interest: $${totalInterest.toFixed(2)}M × 4 = $${interest20yr.toFixed(2)}M`);
+
+  const totalCashflow20yr = ebitda20yr - gpuCost20yr - dcCost - interest20yr;
+  steps.push(`20-Year Net Cashflow: $${ebitda20yr.toFixed(2)}M - $${gpuCost20yr.toFixed(2)}M - $${dcCost.toFixed(2)}M - $${interest20yr.toFixed(2)}M = $${totalCashflow20yr.toFixed(2)}M`);
+
+  const cashflowFraction = ebitda20yr > 0 ? totalCashflow20yr / ebitda20yr : 0;
+  const paybackYears = cashflowFraction * 20;
+  steps.push(`Positive Cashflow: ($${totalCashflow20yr.toFixed(2)}M / $${ebitda20yr.toFixed(2)}M) × 20 = ${paybackYears.toFixed(1)} out of 20 years`);
 
   return { netProfit, revenue, steps, paybackYears };
 };

@@ -36,7 +36,7 @@ function SiteAccordionHeader({
         </div>
       </div>
       <div className="net-profit-display">
-        <div className="label">Positive Cashflow After</div>
+        <div className="label">Positive Cashflow</div>
         <div className="value">{formatPaybackYears(result.paybackYears)}</div>
       </div>
       <div className="net-profit-display">
