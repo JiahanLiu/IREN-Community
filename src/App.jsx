@@ -154,15 +154,15 @@ function App() {
         itLoad: 300,
         itLoadUnit: 'MW',
         pue: 1.5,
-        directGpuCount: 114000,
+        directGpuCount: 138000,
         defaultDCITLoad: 300,
-        defaultDirectGpuCount: 114000,
+        defaultDirectGpuCount: 138000,
         autoscaleGPUs: true,
-        toplineRevenue: 14544.47,
+        toplineRevenue: 17613.16,
         contractYears: 5,
         ebitdaMargin: 85,
         hardwareMode: 'gpus',
-        totalHardwareCost: 5800 * 114 / 76,
+        totalHardwareCost: 5800 * 138 / 76,
         dcCostPerMW: 15,
         dcLifetime: 20,
         prepaymentPercent: 20,
@@ -198,6 +198,41 @@ function App() {
         ebitdaMargin: 85,
         hardwareMode: 'gpus',
         totalHardwareCost: 7021.05,
+        dcCostPerMW: 15,
+        dcLifetime: 20,
+        prepaymentPercent: 20,
+        interestRate: 7,
+        debtYears: 5,
+        residualValue: 0,
+        improvedContractsPercentage: 86,
+        directImprovement: 17.288288951,
+        improvementMode: 'direct',
+        contractGapEnabled: true,
+        autoCalculateRevenue: true,
+      }
+    },
+    {
+      id: 'oklahoma',
+      name: 'Oklahoma',
+      type: 'Hyperscaler IaaS',
+      enabled: false,
+      accordionOpen: true,
+      data: {
+        loadInputMode: 'total',
+        sizeValue: 300,
+        sizeUnit: 'MW',
+        itLoad: 200,
+        itLoadUnit: 'MW',
+        pue: 1.5,
+        directGpuCount: 92000,
+        defaultDCITLoad: 200,
+        defaultDirectGpuCount: 92000,
+        autoscaleGPUs: true,
+        toplineRevenue: 11742.11,
+        contractYears: 5,
+        ebitdaMargin: 85,
+        hardwareMode: 'gpus',
+        totalHardwareCost: 5800 * 92 / 76,
         dcCostPerMW: 15,
         dcLifetime: 20,
         prepaymentPercent: 20,
@@ -251,6 +286,41 @@ function App() {
         ebitdaMargin: 85,
         hardwareMode: 'gpus',
         totalHardwareCost: 7021.05,
+        dcCostPerMW: 15,
+        dcLifetime: 20,
+        prepaymentPercent: 20,
+        interestRate: 7,
+        debtYears: 5,
+        residualValue: 0,
+        improvedContractsPercentage: 86,
+        directImprovement: 17.288288951,
+        improvementMode: 'direct',
+        contractGapEnabled: true,
+        autoCalculateRevenue: true,
+      }
+    },
+    {
+      id: 'sweetwater-1-600mw',
+      name: 'SW1: 600MW Hyperscaler',
+      type: 'Hyperscaler IaaS',
+      enabled: false,
+      accordionOpen: true,
+      data: {
+        loadInputMode: 'total',
+        sizeValue: 600,
+        sizeUnit: 'MW',
+        itLoad: 400,
+        itLoadUnit: 'MW',
+        pue: 1.5,
+        directGpuCount: 184000,
+        defaultDCITLoad: 400,
+        defaultDirectGpuCount: 184000,
+        autoscaleGPUs: true,
+        toplineRevenue: 23484.22,
+        contractYears: 5,
+        ebitdaMargin: 85,
+        hardwareMode: 'gpus',
+        totalHardwareCost: 14042.10,
         dcCostPerMW: 15,
         dcLifetime: 20,
         prepaymentPercent: 20,
@@ -495,10 +565,15 @@ function App() {
     setCurrentShares(params.currentShares);
 
     if (scenarioName === '2027-h110-colo') {
-      // Canada + Horizon 1-10 + SW1 Colo - H2 2027 (all sites enabled)
+      // Frans 2027: Canada + Horizon 1-10 + SW1 600MW + Oklahoma
       setSites(sites.map(site => ({
         ...site,
-        enabled: site.id !== 'sweetwater-2' // Enable all except Sweetwater 2
+        enabled: site.id === 'prince-george' ||
+                 site.id === 'mackenzie-canal' ||
+                 site.id === 'horizon-1-4' ||
+                 site.id === 'horizon-5-10' ||
+                 site.id === 'sweetwater-1-600mw' ||
+                 site.id === 'oklahoma'
       })));
     } else if (scenarioName === 'canada-h14') {
       // Canada + Horizon 1-4 - Prince George, Mackenzie + Canal Flats, and Horizon 1-4 enabled
@@ -513,14 +588,15 @@ function App() {
         enabled: site.id === 'prince-george' || site.id === 'mackenzie-canal'
       })));
     } else if (scenarioName === '2027-h110-hyperscaler') {
-      // Canada + Horizon 1-10 + SW1 1400MW Hyperscaler
+      // Canada + Horizon 1-10 + SW1 1400MW Hyperscaler + Oklahoma
       setSites(sites.map(site => ({
         ...site,
         enabled: site.id === 'prince-george' ||
                  site.id === 'mackenzie-canal' ||
                  site.id === 'horizon-1-4' ||
                  site.id === 'horizon-5-10' ||
-                 site.id === 'sweetwater-1-1400mw'
+                 site.id === 'sweetwater-1-1400mw' ||
+                 site.id === 'oklahoma'
       })));
     } else if (scenarioName === '2026-h18-sw1') {
       // Canada + Horizon 1-8 + SW1 300MW Hyperscaler
@@ -678,17 +754,23 @@ function App() {
     if (site.id === 'sweetwater-1-300mw') {
       return selectedScenario === '2026-h18-sw1';
     }
+    if (site.id === 'sweetwater-1-600mw') {
+      return selectedScenario === '2027-h110-colo';
+    }
     if (site.id === 'sweetwater-1-1400mw') {
       return selectedScenario === '2027-h110-hyperscaler';
     }
     if (site.id === 'sweetwater-1') {
-      return selectedScenario !== '2027-h110-hyperscaler' && selectedScenario !== '2026-h18-sw1';
+      return selectedScenario !== '2027-h110-hyperscaler' && selectedScenario !== '2026-h18-sw1' && selectedScenario !== '2027-h110-colo';
     }
     if (site.id === 'horizon-5-8') {
       return selectedScenario === '2026-h18-sw1';
     }
     if (site.id === 'horizon-5-10') {
-      return selectedScenario !== '2026-h18-sw1';
+      return selectedScenario === '2027-h110-colo' || selectedScenario === '2027-h110-hyperscaler';
+    }
+    if (site.id === 'oklahoma') {
+      return selectedScenario === '2027-h110-colo' || selectedScenario === '2027-h110-hyperscaler';
     }
     return true;
   });
@@ -833,8 +915,8 @@ function App() {
               className={`scenario-btn ${selectedScenario === 'canada-h14' ? 'selected' : ''}`}
             >
               <div>
-                <div>Canada +</div>
-                <div>Horizon 1-4</div>
+                <div>2025: Canada</div>
+                <div>+ H1-4</div>
               </div>
             </button>
             <button
@@ -842,8 +924,8 @@ function App() {
               className={`scenario-btn ${selectedScenario === '2026-h18-sw1' ? 'selected' : ''}`}
             >
               <div>
-                <div>Frans 2026: Canada + Horizon 1-8</div>
-                <div>+ SW1 200MW IT Hyperscaler</div>
+                <div>Frans 2026: Canada + H1-8</div>
+                <div>+ SW1 200MW</div>
               </div>
             </button>
             <button
@@ -851,8 +933,8 @@ function App() {
               className={`scenario-btn ${selectedScenario === '2027-h110-colo' ? 'selected' : ''}`}
             >
               <div>
-                <div>2027: Canada + Horizon 1-10</div>
-                <div>+ SW1 Colo</div>
+                <div>Frans 2027: Canada + H1-10</div>
+                <div>+ SW1 400MW + OK</div>
               </div>
             </button>
             <button
@@ -860,8 +942,8 @@ function App() {
               className={`scenario-btn ${selectedScenario === '2027-h110-hyperscaler' ? 'selected' : ''}`}
             >
               <div>
-                <div>Dulce 2027: Canada + Horizon 1-10</div>
-                <div>+ SW1 933 MW IT Hyperscaler</div>
+                <div>Dulce 2027: Canada + H1-10</div>
+                <div>+ SW1 + OK</div>
               </div>
             </button>
 
