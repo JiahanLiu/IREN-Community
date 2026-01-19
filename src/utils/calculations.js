@@ -276,6 +276,10 @@ export const calculateHyperscalerProfit = (data, gpuPrices, gpuHourlyRates) => {
   const interest20yr = totalInterest * 4;
   steps.push(`20-Year Interest: $${totalInterest.toFixed(2)}M × 4 = $${interest20yr.toFixed(2)}M`);
 
+  // Calculate residual value for 20 years (4 GPU replacement cycles)
+  const residualValue20yr = residualValue * 4;
+  steps.push(`20-Year Residual Value: $${residualValue.toFixed(2)}M × 4 = $${residualValue20yr.toFixed(2)}M`);
+
   // Calculate additional profit for 20 years (additionalProfit5yrs is already 5-year value)
   const additionalProfit5yrs = additionalProfitPerYear * 5;
   const additionalProfit20yr = additionalProfit5yrs * 4;
@@ -283,14 +287,14 @@ export const calculateHyperscalerProfit = (data, gpuPrices, gpuHourlyRates) => {
     steps.push(`20-Year Additional Profit: $${additionalProfit5yrs.toFixed(2)}M × 4 = $${additionalProfit20yr.toFixed(2)}M`);
   }
 
-  const totalCashflow20yr = ebitda20yr - gpuCost20yr - dcCost - interest20yr + additionalProfit20yr;
+  const totalCashflow20yr = ebitda20yr - gpuCost20yr - dcCost - interest20yr + residualValue20yr + additionalProfit20yr;
   const totalEbitda20yr = ebitda20yr + additionalProfit20yr;
 
   if (additionalProfit20yr > 0) {
-    steps.push(`20-Year Net Cashflow: $${ebitda20yr.toFixed(2)}M - $${gpuCost20yr.toFixed(2)}M - $${dcCost.toFixed(2)}M - $${interest20yr.toFixed(2)}M + $${additionalProfit20yr.toFixed(2)}M = $${totalCashflow20yr.toFixed(2)}M`);
+    steps.push(`20-Year Net Cashflow: $${ebitda20yr.toFixed(2)}M - $${gpuCost20yr.toFixed(2)}M - $${dcCost.toFixed(2)}M - $${interest20yr.toFixed(2)}M + $${residualValue20yr.toFixed(2)}M + $${additionalProfit20yr.toFixed(2)}M = $${totalCashflow20yr.toFixed(2)}M`);
     steps.push(`20-Year Total EBITDA: $${ebitda20yr.toFixed(2)}M + $${additionalProfit20yr.toFixed(2)}M = $${totalEbitda20yr.toFixed(2)}M`);
   } else {
-    steps.push(`20-Year Net Cashflow: $${ebitda20yr.toFixed(2)}M - $${gpuCost20yr.toFixed(2)}M - $${dcCost.toFixed(2)}M - $${interest20yr.toFixed(2)}M = $${totalCashflow20yr.toFixed(2)}M`);
+    steps.push(`20-Year Net Cashflow: $${ebitda20yr.toFixed(2)}M - $${gpuCost20yr.toFixed(2)}M - $${dcCost.toFixed(2)}M - $${interest20yr.toFixed(2)}M + $${residualValue20yr.toFixed(2)}M = $${totalCashflow20yr.toFixed(2)}M`);
   }
 
   const cashflowFraction = totalEbitda20yr > 0 ? totalCashflow20yr / totalEbitda20yr : 0;
@@ -412,8 +416,12 @@ export const calculateIRENCloudProfit = (data, gpuPrices) => {
   const interest20yr = totalInterest * 4;
   steps.push(`20-Year Interest: $${totalInterest.toFixed(2)}M × 4 = $${interest20yr.toFixed(2)}M`);
 
-  const totalCashflow20yr = ebitda20yr - gpuCost20yr - dcCost - interest20yr;
-  steps.push(`20-Year Net Cashflow: $${ebitda20yr.toFixed(2)}M - $${gpuCost20yr.toFixed(2)}M - $${dcCost.toFixed(2)}M - $${interest20yr.toFixed(2)}M = $${totalCashflow20yr.toFixed(2)}M`);
+  // Calculate residual value for 20 years (4 GPU replacement cycles)
+  const residualValue20yr = residualValue * 4;
+  steps.push(`20-Year Residual Value: $${residualValue.toFixed(2)}M × 4 = $${residualValue20yr.toFixed(2)}M`);
+
+  const totalCashflow20yr = ebitda20yr - gpuCost20yr - dcCost - interest20yr + residualValue20yr;
+  steps.push(`20-Year Net Cashflow: $${ebitda20yr.toFixed(2)}M - $${gpuCost20yr.toFixed(2)}M - $${dcCost.toFixed(2)}M - $${interest20yr.toFixed(2)}M + $${residualValue20yr.toFixed(2)}M = $${totalCashflow20yr.toFixed(2)}M`);
 
   const cashflowFraction = ebitda20yr > 0 ? totalCashflow20yr / ebitda20yr : 0;
   const paybackYears = cashflowFraction * 20;
