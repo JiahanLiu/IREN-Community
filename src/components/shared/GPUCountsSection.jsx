@@ -17,12 +17,13 @@ function GPUCountsSection({
 
   // Default display names if not provided
   const defaultDisplayNames = {
-    'hyperscaleBulkGB300': 'Hyperscale Bulk GB300',
-    'veraRubinNVL144': 'Hyperscale Bulk Vera Rubin NVL144',
-    'gb300': 'GB300',
-    'b200': 'B200',
-    'b300': 'B300',
-    'mi350x': 'MI350X'
+    'gb300': 'GB300 - 2025 Pricing',
+    'b200': 'B200 - 2025 Pricing',
+    'b300': 'B300 - 2025 Pricing',
+    'b3002026': 'B300 - 2026 Pricing',
+    'mi350x': 'MI350X - 2025 Pricing',
+    'veraRubin': 'Vera Rubin - 2026 Pricing',
+    'hyperscaleBulkGB300': 'Bulk GB300 - 2025 Pricing'
   };
 
   const getDisplayName = (gpuType) => {
@@ -49,8 +50,8 @@ function GPUCountsSection({
           {Object.keys(gpuPrices).map(gpuType => {
             const isHyperscaleType = fieldMap && fieldMap[gpuType] !== undefined;
             const value = isHyperscaleType
-              ? (siteData[fieldMap[gpuType]] ?? '')
-              : (gpuValues?.[gpuType] ?? '');
+              ? (siteData[fieldMap[gpuType]] ?? 0)
+              : (gpuValues?.[gpuType] ?? 0);
 
             return (
               <div key={gpuType} className="input-row">

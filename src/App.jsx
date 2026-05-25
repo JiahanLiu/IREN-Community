@@ -4,6 +4,7 @@ import GPUPrices from './components/GPUPrices';
 import ColocationSite from './components/ColocationSite';
 import HyperscalerSite from './components/HyperscalerSite';
 import IRENCloudSite from './components/IRENCloudSite';
+import ScenarioMetricChart from './components/ScenarioMetricChart';
 import packageJson from '../package.json';
 import { formatValue, formatShares } from './utils/formatters';
 import { calculateSiteNetProfit } from './utils/calculations';
@@ -11,8 +12,19 @@ import {
   DEFAULT_SCENARIO,
   DEFAULT_SCENARIO_PARAMS,
   DEFAULT_GPU_PRICES,
-  DEFAULT_GPU_HOURLY_RATES
+  DEFAULT_GPU_HOURLY_RATES,
+  BASE_2025_SHARES,
+  getCurrentSharesFromDilution
 } from './constants/defaults';
+import { buildScenarioSites } from './constants/sites';
+
+const getScenarioCurrentShares = (params = {}) =>
+  params.currentShares ?? getCurrentSharesFromDilution(params.dilutionPercentage);
+const DEFAULT_SCENARIO_SHARES = getScenarioCurrentShares(DEFAULT_SCENARIO_PARAMS[DEFAULT_SCENARIO]);
+const cloneSites = (sitesToClone) => sitesToClone.map(site => ({
+  ...site,
+  data: JSON.parse(JSON.stringify(site.data)),
+}));
 
 function App() {
   // GPU Prices
@@ -23,8 +35,8 @@ function App() {
 
   // Share calculation inputs
   const [useDirectSharesInput, setUseDirectSharesInput] = useState(false);
-  const [directShares, setDirectShares] = useState(365.3); // in millions
-  const [currentShares, setCurrentShares] = useState(DEFAULT_SCENARIO_PARAMS[DEFAULT_SCENARIO].currentShares); // in millions
+  const [directShares, setDirectShares] = useState(DEFAULT_SCENARIO_SHARES); // in millions
+  const [currentShares, setCurrentShares] = useState(DEFAULT_SCENARIO_SHARES); // in millions
   const [dilutionPercentage, setDilutionPercentage] = useState(DEFAULT_SCENARIO_PARAMS[DEFAULT_SCENARIO].dilutionPercentage);
   const [peRatio, setPeRatio] = useState(DEFAULT_SCENARIO_PARAMS[DEFAULT_SCENARIO].peRatio);
   const [corporateTaxRate, setCorporateTaxRate] = useState(21); // percentage
@@ -42,354 +54,7 @@ function App() {
   const [scenarioParameters, setScenarioParameters] = useState({...DEFAULT_SCENARIO_PARAMS});
 
   // Sites data
-  const [sites, setSites] = useState([
-    {
-      id: 'prince-george',
-      name: 'Prince George',
-      type: 'IREN Cloud',
-      enabled: true,
-      accordionOpen: true,
-      data: {
-        toplineRevenue: 500,
-        ebitdaMargin: 85,
-        dcType: 'retrofit',
-        loadInputMode: 'total',
-        sizeValue: 50,
-        sizeUnit: 'MW',
-        itLoad: 45.45,
-        itLoadUnit: 'MW',
-        pue: 1.1,
-        retrofitCapexPerMW: 3.2,
-        dcLifetime: 20,
-        gpus: { b300: 9500, b200: 9600, mi350x: 1100, gb300: 1200, hyperscaleBulkGB300: 0 },
-        defaultDCITLoad: 50 / 1.1,
-        defaultGpus: { b300: 9500, b200: 9600, mi350x: 1100, gb300: 1200, hyperscaleBulkGB300: 0 },
-        autoscaleGPUs: true,
-        gpuPaidOffPercent: 25,
-        gpuUsefulLife: 5,
-        debtPercent: 80,
-        interestRate: 7,
-        debtYears: 5,
-        residualValue: 0,
-        autoCalculateRevenue: true,
-      }
-    },
-    {
-      id: 'mackenzie-canal',
-      name: 'Mackenzie + Canal Flats',
-      type: 'IREN Cloud',
-      enabled: true,
-      accordionOpen: true,
-      data: {
-        toplineRevenue: 1000,
-        ebitdaMargin: 85,
-        dcType: 'retrofit',
-        loadInputMode: 'total',
-        sizeValue: 110,
-        sizeUnit: 'MW',
-        itLoad: 100,
-        itLoadUnit: 'MW',
-        pue: 1.1,
-        retrofitCapexPerMW: 3.2,
-        dcLifetime: 20,
-        gpus: { b300: 19000, b200: 19200, mi350x: 2200, gb300: 2400, hyperscaleBulkGB300: 0 },
-        defaultDCITLoad: 100,
-        defaultGpus: { b300: 19000, b200: 19200, mi350x: 2200, gb300: 2400, hyperscaleBulkGB300: 0 },
-        autoscaleGPUs: true,
-        gpuPaidOffPercent: 0,
-        gpuUsefulLife: 5,
-        debtPercent: 80,
-        interestRate: 7,
-        debtYears: 5,
-        residualValue: 0,
-        autoCalculateRevenue: true,
-      }
-    },
-    {
-      id: 'horizon-1-4',
-      name: 'Horizon 1-4',
-      type: 'Hyperscaler IaaS',
-      enabled: true,
-      accordionOpen: true,
-      data: {
-        loadInputMode: 'total',
-        sizeValue: 300,
-        sizeUnit: 'MW',
-        itLoad: 200,
-        itLoadUnit: 'MW',
-        pue: 1.5,
-        revenueMode: 'direct',
-        directGpuCount: 76000,
-        defaultDCITLoad: 200,
-        defaultDirectGpuCount: 76000,
-        autoscaleGPUs: true,
-        toplineRevenue: 9700,
-        contractYears: 5,
-        ebitdaMargin: 85,
-        hardwareMode: 'gpus',
-        totalHardwareCost: 5800,
-        dcCostPerMW: 15,
-        dcLifetime: 20,
-        prepaymentPercent: 20,
-        interestRate: 7,
-        debtYears: 5,
-        residualValue: 0,
-        improvedContractsPercentage: 9.7 / 13.224 * 100,
-        directImprovement: 17.288288951,
-        improvementMode: 'direct',
-        contractGapEnabled: false,
-        autoCalculateRevenue: true,
-      }
-    },
-    {
-      id: 'horizon-5-10',
-      name: 'Horizon 5-10',
-      type: 'Hyperscaler IaaS',
-      enabled: false,
-      accordionOpen: true,
-      data: {
-        loadInputMode: 'total',
-        sizeValue: 450,
-        sizeUnit: 'MW',
-        itLoad: 300,
-        itLoadUnit: 'MW',
-        pue: 1.5,
-        directGpuCount: 138000,
-        defaultDCITLoad: 300,
-        defaultDirectGpuCount: 138000,
-        autoscaleGPUs: true,
-        toplineRevenue: 17613.16,
-        contractYears: 5,
-        ebitdaMargin: 85,
-        hardwareMode: 'gpus',
-        totalHardwareCost: 5800 * 138 / 76,
-        dcCostPerMW: 15,
-        dcLifetime: 20,
-        prepaymentPercent: 20,
-        interestRate: 7,
-        debtYears: 5,
-        residualValue: 0,
-        improvedContractsPercentage: 86,
-        directImprovement: 17.288288951,
-        improvementMode: 'direct',
-        contractGapEnabled: true,
-        autoCalculateRevenue: true,
-      }
-    },
-    {
-      id: 'horizon-5-8',
-      name: 'Horizon 5-8',
-      type: 'Hyperscaler IaaS',
-      enabled: true,
-      accordionOpen: true,
-      data: {
-        loadInputMode: 'total',
-        sizeValue: 300,
-        sizeUnit: 'MW',
-        itLoad: 200,
-        itLoadUnit: 'MW',
-        pue: 1.5,
-        directGpuCount: 92000,
-        defaultDCITLoad: 200,
-        defaultDirectGpuCount: 92000,
-        autoscaleGPUs: true,
-        toplineRevenue: 11742.11,
-        contractYears: 5,
-        ebitdaMargin: 85,
-        hardwareMode: 'gpus',
-        totalHardwareCost: 7021.05,
-        dcCostPerMW: 15,
-        dcLifetime: 20,
-        prepaymentPercent: 20,
-        interestRate: 7,
-        debtYears: 5,
-        residualValue: 0,
-        improvedContractsPercentage: 86,
-        directImprovement: 17.288288951,
-        improvementMode: 'direct',
-        contractGapEnabled: true,
-        autoCalculateRevenue: true,
-      }
-    },
-    {
-      id: 'oklahoma',
-      name: 'Oklahoma',
-      type: 'Hyperscaler IaaS',
-      enabled: false,
-      accordionOpen: true,
-      data: {
-        loadInputMode: 'total',
-        sizeValue: 300,
-        sizeUnit: 'MW',
-        itLoad: 200,
-        itLoadUnit: 'MW',
-        pue: 1.5,
-        directGpuCount: 92000,
-        defaultDCITLoad: 200,
-        defaultDirectGpuCount: 92000,
-        autoscaleGPUs: true,
-        toplineRevenue: 11742.11,
-        contractYears: 5,
-        ebitdaMargin: 85,
-        hardwareMode: 'gpus',
-        totalHardwareCost: 5800 * 92 / 76,
-        dcCostPerMW: 15,
-        dcLifetime: 20,
-        prepaymentPercent: 20,
-        interestRate: 7,
-        debtYears: 5,
-        residualValue: 0,
-        improvedContractsPercentage: 86,
-        directImprovement: 17.288288951,
-        improvementMode: 'direct',
-        contractGapEnabled: true,
-        autoCalculateRevenue: true,
-      }
-    },
-    {
-      id: 'sweetwater-1',
-      name: 'SW1: Colo',
-      type: 'Colocation',
-      enabled: false,
-      accordionOpen: true,
-      data: {
-        loadInputMode: 'total',
-        totalLoadValue: 1400,
-        totalLoadUnit: 'MW',
-        itLoad: 933.33,
-        itLoadUnit: 'MW',
-        pue: 1.5,
-        revenuePerMW: 2.18,
-        dcCostPerMW: 15,
-        dcLifetime: 20,
-      }
-    },
-    {
-      id: 'sweetwater-1-300mw',
-      name: 'SW1: 300MW Hyperscaler',
-      type: 'Hyperscaler IaaS',
-      enabled: true,
-      accordionOpen: true,
-      data: {
-        loadInputMode: 'total',
-        sizeValue: 300,
-        sizeUnit: 'MW',
-        itLoad: 200,
-        itLoadUnit: 'MW',
-        pue: 1.5,
-        directGpuCount: 92000,
-        defaultDCITLoad: 200,
-        defaultDirectGpuCount: 92000,
-        autoscaleGPUs: true,
-        toplineRevenue: 11742.11,
-        contractYears: 5,
-        ebitdaMargin: 85,
-        hardwareMode: 'gpus',
-        totalHardwareCost: 7021.05,
-        dcCostPerMW: 15,
-        dcLifetime: 20,
-        prepaymentPercent: 20,
-        interestRate: 7,
-        debtYears: 5,
-        residualValue: 0,
-        improvedContractsPercentage: 86,
-        directImprovement: 17.288288951,
-        improvementMode: 'direct',
-        contractGapEnabled: true,
-        autoCalculateRevenue: true,
-      }
-    },
-    {
-      id: 'sweetwater-1-600mw',
-      name: 'SW1: 600MW Hyperscaler',
-      type: 'Hyperscaler IaaS',
-      enabled: false,
-      accordionOpen: true,
-      data: {
-        loadInputMode: 'total',
-        sizeValue: 600,
-        sizeUnit: 'MW',
-        itLoad: 400,
-        itLoadUnit: 'MW',
-        pue: 1.5,
-        directGpuCount: 184000,
-        defaultDCITLoad: 400,
-        defaultDirectGpuCount: 184000,
-        autoscaleGPUs: true,
-        toplineRevenue: 23484.22,
-        contractYears: 5,
-        ebitdaMargin: 85,
-        hardwareMode: 'gpus',
-        totalHardwareCost: 14042.10,
-        dcCostPerMW: 15,
-        dcLifetime: 20,
-        prepaymentPercent: 20,
-        interestRate: 7,
-        debtYears: 5,
-        residualValue: 0,
-        improvedContractsPercentage: 86,
-        directImprovement: 17.288288951,
-        improvementMode: 'direct',
-        contractGapEnabled: true,
-        autoCalculateRevenue: true,
-      }
-    },
-    {
-      id: 'sweetwater-1-1400mw',
-      name: 'SW1: 1400MW Hyperscaler',
-      type: 'Hyperscaler IaaS',
-      enabled: false,
-      accordionOpen: true,
-      data: {
-        loadInputMode: 'total',
-        sizeValue: 1400,
-        sizeUnit: 'MW',
-        itLoad: 933.33,
-        itLoadUnit: 'MW',
-        pue: 1.5,
-        directGpuCount: 0,
-        veraRubinGpuCount: 300427,
-        defaultDCITLoad: 933.33,
-        defaultDirectGpuCount: 0,
-        defaultVeraRubinGpuCount: 300427,
-        autoscaleGPUs: true,
-        toplineRevenue: 54775,
-        contractYears: 5,
-        ebitdaMargin: 85,
-        hardwareMode: 'gpus',
-        totalHardwareCost: 5800 * 429.18 / 76,
-        dcCostPerMW: 15,
-        dcLifetime: 20,
-        prepaymentPercent: 20,
-        interestRate: 7,
-        debtYears: 5,
-        residualValue: 0,
-        improvedContractsPercentage: 86,
-        directImprovement: 17.288288951,
-        improvementMode: 'direct',
-        contractGapEnabled: true,
-        autoCalculateRevenue: true,
-      }
-    },
-    {
-      id: 'sweetwater-2',
-      name: 'Sweetwater 2 Colo',
-      type: 'Colocation',
-      enabled: false,
-      accordionOpen: true,
-      data: {
-        loadInputMode: 'total',
-        totalLoadValue: 600,
-        totalLoadUnit: 'MW',
-        itLoad: 400,
-        itLoadUnit: 'MW',
-        pue: 1.5,
-        revenuePerMW: 1.83,
-        dcCostPerMW: 15,
-        dcLifetime: 20,
-      }
-    },
-  ]);
+  const [sites, setSites] = useState(() => buildScenarioSites(DEFAULT_SCENARIO, DEFAULT_GPU_HOURLY_RATES));
 
   const updateSite = (id, newData) => {
     setSites(sites.map(site =>
@@ -435,7 +100,6 @@ function App() {
       gpuHourlyRates,
       useDirectSharesInput,
       directShares,
-      currentShares,
       dilutionPercentage,
       peRatio,
       corporateTaxRate,
@@ -443,13 +107,7 @@ function App() {
       sgaExpense,
       selectedScenario,
       customScenarios,
-      sites: sites.map(site => ({
-        id: site.id,
-        name: site.name,
-        type: site.type,
-        enabled: site.enabled,
-        data: site.data
-      }))
+      sites: cloneSites(sites)
     };
 
     const csvContent = JSON.stringify(data, null, 2);
@@ -475,22 +133,28 @@ function App() {
 
         // Update GPU prices if present
         if (data.gpuPrices) {
+          const veraRubinPrice = data.gpuPrices.veraRubin ?? data.gpuPrices.veraRubinNVL144;
           setGpuPrices({
+            veraRubin: veraRubinPrice ?? gpuPrices.veraRubin,
             hyperscaleBulkGB300: data.gpuPrices.hyperscaleBulkGB300 ?? gpuPrices.hyperscaleBulkGB300,
             gb300: data.gpuPrices.gb300 ?? gpuPrices.gb300,
-            b200: data.gpuPrices.b200 ?? gpuPrices.b200,
+            b3002026: data.gpuPrices.b3002026 ?? gpuPrices.b3002026,
             b300: data.gpuPrices.b300 ?? gpuPrices.b300,
+            b200: data.gpuPrices.b200 ?? gpuPrices.b200,
             mi350x: data.gpuPrices.mi350x ?? gpuPrices.mi350x,
           });
         }
 
         // Update GPU hourly rates if present
         if (data.gpuHourlyRates) {
+          const veraRubinHourlyRate = data.gpuHourlyRates.veraRubin ?? data.gpuHourlyRates.veraRubinNVL144;
           setGpuHourlyRates({
+            veraRubin: veraRubinHourlyRate ?? gpuHourlyRates.veraRubin,
             hyperscaleBulkGB300: data.gpuHourlyRates.hyperscaleBulkGB300 ?? gpuHourlyRates.hyperscaleBulkGB300,
             gb300: data.gpuHourlyRates.gb300 ?? gpuHourlyRates.gb300,
-            b200: data.gpuHourlyRates.b200 ?? gpuHourlyRates.b200,
+            b3002026: data.gpuHourlyRates.b3002026 ?? gpuHourlyRates.b3002026,
             b300: data.gpuHourlyRates.b300 ?? gpuHourlyRates.b300,
+            b200: data.gpuHourlyRates.b200 ?? gpuHourlyRates.b200,
             mi350x: data.gpuHourlyRates.mi350x ?? gpuHourlyRates.mi350x,
           });
         }
@@ -498,8 +162,15 @@ function App() {
         // Update share calculation parameters if present
         if (data.useDirectSharesInput !== undefined) setUseDirectSharesInput(data.useDirectSharesInput);
         if (data.directShares !== undefined) setDirectShares(data.directShares);
-        if (data.currentShares !== undefined) setCurrentShares(data.currentShares);
-        if (data.dilutionPercentage !== undefined) setDilutionPercentage(data.dilutionPercentage);
+        if (data.dilutionPercentage !== undefined) {
+          const derivedShares = getCurrentSharesFromDilution(data.dilutionPercentage);
+          setDilutionPercentage(data.dilutionPercentage);
+          setCurrentShares(derivedShares);
+          if (data.directShares === undefined) setDirectShares(derivedShares);
+        } else if (data.currentShares !== undefined) {
+          setCurrentShares(data.currentShares);
+          if (data.directShares === undefined) setDirectShares(data.currentShares);
+        }
         if (data.peRatio !== undefined) setPeRatio(data.peRatio);
         if (data.corporateTaxRate !== undefined) setCorporateTaxRate(data.corporateTaxRate);
         if (data.taxAbatementRate !== undefined) setTaxAbatementRate(data.taxAbatementRate);
@@ -513,10 +184,9 @@ function App() {
 
         // Update sites if present
         if (data.sites && Array.isArray(data.sites)) {
-          setSites(data.sites.map(site => ({
+          setSites(cloneSites(data.sites).map(site => ({
             ...site,
             accordionOpen: site.accordionOpen ?? true,
-            data: { ...site.data }
           })));
         }
 
@@ -541,17 +211,10 @@ function App() {
 
   const updateDilutionPercentage = (value) => {
     setDilutionPercentage(value);
+    setCurrentShares(getCurrentSharesFromDilution(value));
     setScenarioParameters(prev => ({
       ...prev,
       [selectedScenario]: { ...prev[selectedScenario], dilutionPercentage: value }
-    }));
-  };
-
-  const updateCurrentShares = (value) => {
-    setCurrentShares(value);
-    setScenarioParameters(prev => ({
-      ...prev,
-      [selectedScenario]: { ...prev[selectedScenario], currentShares: value }
     }));
   };
 
@@ -559,56 +222,13 @@ function App() {
     setSelectedScenario(scenarioName); // Track the selected scenario
 
     // Load parameters for this scenario
-    const params = scenarioParameters[scenarioName] || { peRatio: 30, dilutionPercentage: 30, currentShares: 352.7 };
+    const params = scenarioParameters[scenarioName] || { peRatio: 30, dilutionPercentage: 30 };
+    const scenarioCurrentShares = getScenarioCurrentShares(params);
     setPeRatio(params.peRatio);
     setDilutionPercentage(params.dilutionPercentage);
-    setCurrentShares(params.currentShares);
-
-    if (scenarioName === '2027-h110-colo') {
-      // Frans 2027: Canada + Horizon 1-10 + SW1 600MW + Oklahoma
-      setSites(sites.map(site => ({
-        ...site,
-        enabled: site.id === 'prince-george' ||
-                 site.id === 'mackenzie-canal' ||
-                 site.id === 'horizon-1-4' ||
-                 site.id === 'horizon-5-10' ||
-                 site.id === 'sweetwater-1-600mw' ||
-                 site.id === 'oklahoma'
-      })));
-    } else if (scenarioName === 'canada-h14') {
-      // Canada + Horizon 1-4 - Prince George, Mackenzie + Canal Flats, and Horizon 1-4 enabled
-      setSites(sites.map(site => ({
-        ...site,
-        enabled: site.id === 'prince-george' || site.id === 'mackenzie-canal' || site.id === 'horizon-1-4'
-      })));
-    } else if (scenarioName === 'canada') {
-      // Canada Only - Only Prince George and Mackenzie + Canal Flats enabled
-      setSites(sites.map(site => ({
-        ...site,
-        enabled: site.id === 'prince-george' || site.id === 'mackenzie-canal'
-      })));
-    } else if (scenarioName === '2027-h110-hyperscaler') {
-      // Canada + Horizon 1-10 + SW1 1400MW Hyperscaler + Oklahoma
-      setSites(sites.map(site => ({
-        ...site,
-        enabled: site.id === 'prince-george' ||
-                 site.id === 'mackenzie-canal' ||
-                 site.id === 'horizon-1-4' ||
-                 site.id === 'horizon-5-10' ||
-                 site.id === 'sweetwater-1-1400mw' ||
-                 site.id === 'oklahoma'
-      })));
-    } else if (scenarioName === '2026-h18-sw1') {
-      // Canada + Horizon 1-8 + SW1 300MW Hyperscaler
-      setSites(sites.map(site => ({
-        ...site,
-        enabled: site.id === 'prince-george' ||
-                 site.id === 'mackenzie-canal' ||
-                 site.id === 'horizon-1-4' ||
-                 site.id === 'horizon-5-8' ||
-                 site.id === 'sweetwater-1-300mw'
-      })));
-    }
+    setCurrentShares(scenarioCurrentShares);
+    setDirectShares(scenarioCurrentShares);
+    setSites(buildScenarioSites(scenarioName, gpuHourlyRates));
   };
 
   const saveCustomScenario = () => {
@@ -620,14 +240,14 @@ function App() {
       name: newScenarioName.trim(),
       peRatio: peRatio,
       dilution: dilutionPercentage,
-      currentShares: currentShares,
-      enabledSites: sites.filter(site => site.enabled).map(site => site.id)
+      enabledSites: sites.filter(site => site.enabled).map(site => site.id),
+      sites: cloneSites(sites)
     };
 
     // Save parameters for this custom scenario
     setScenarioParameters(prev => ({
       ...prev,
-      [scenarioId]: { peRatio: peRatio, dilutionPercentage: dilutionPercentage, currentShares: currentShares }
+      [scenarioId]: { peRatio: peRatio, dilutionPercentage: dilutionPercentage }
     }));
 
     setCustomScenarios([...customScenarios, newScenario]);
@@ -646,7 +266,7 @@ function App() {
 
     // If the deleted scenario was selected, switch to default
     if (selectedScenario === scenarioId) {
-      loadScenario('2027-h110-colo');
+      loadScenario(DEFAULT_SCENARIO);
     }
   };
 
@@ -654,15 +274,28 @@ function App() {
     setSelectedScenario(scenario.id);
 
     // Load parameters for this scenario
-    const params = scenarioParameters[scenario.id] || { peRatio: scenario.peRatio, dilutionPercentage: scenario.dilution, currentShares: 352.7 };
+    const params = scenarioParameters[scenario.id] || {
+      peRatio: scenario.peRatio,
+      dilutionPercentage: scenario.dilution,
+      currentShares: scenario.currentShares
+    };
+    const scenarioCurrentShares = getScenarioCurrentShares(params);
     setPeRatio(params.peRatio);
     setDilutionPercentage(params.dilutionPercentage);
-    setCurrentShares(params.currentShares);
+    setCurrentShares(scenarioCurrentShares);
+    setDirectShares(scenarioCurrentShares);
 
-    setSites(sites.map(site => ({
-      ...site,
-      enabled: scenario.enabledSites.includes(site.id)
-    })));
+    if (scenario.sites && Array.isArray(scenario.sites)) {
+      setSites(cloneSites(scenario.sites).map(site => ({
+        ...site,
+        accordionOpen: site.accordionOpen ?? true,
+      })));
+    } else {
+      setSites(sites.map(site => ({
+        ...site,
+        enabled: scenario.enabledSites.includes(site.id)
+      })));
+    }
   };
 
   const deleteSite = (id) => {
@@ -703,10 +336,6 @@ function App() {
         interestRate: 7,
         debtYears: 5,
         residualValue: 0,
-        improvedContractsPercentage: 0,
-        directImprovement: 17.288288951,
-        improvementMode: 'direct',
-        contractGapEnabled: false,
         autoCalculateRevenue: false,
       },
       'IREN Cloud': {
@@ -721,9 +350,9 @@ function App() {
         pue: 1.1,
         retrofitCapexPerMW: 0,
         dcLifetime: 20,
-        gpus: { b300: 9500, b200: 9600, mi350x: 1100, gb300: 1200, hyperscaleBulkGB300: 0 },
+        gpus: { b300: 9500, b3002026: 0, b200: 9600, mi350x: 1100, gb300: 1200, hyperscaleBulkGB300: 0 },
         defaultDCITLoad: 50 / 1.1,
-        defaultGpus: { b300: 9500, b200: 9600, mi350x: 1100, gb300: 1200, hyperscaleBulkGB300: 0 },
+        defaultGpus: { b300: 9500, b3002026: 0, b200: 9600, mi350x: 1100, gb300: 1200, hyperscaleBulkGB300: 0 },
         autoscaleGPUs: true,
         gpuPaidOffPercent: 0,
         gpuUsefulLife: 5,
@@ -747,33 +376,13 @@ function App() {
 
   // Helper to calculate site profit using imported utility
   const getSiteProfit = (site) => calculateSiteNetProfit(site, gpuPrices, gpuHourlyRates);
+  const getSiteSizeMW = (site) => {
+    const sizeValue = Number(site.data.sizeValue ?? site.data.totalLoadValue) || 0;
+    const sizeUnit = site.data.sizeUnit ?? site.data.totalLoadUnit ?? 'MW';
+    return sizeUnit === 'GW' ? sizeValue * 1000 : sizeValue;
+  };
 
-  // Filter sites based on selected scenario
-  // Show specific sites only in certain scenarios
-  const activeSites = sites.filter(site => {
-    if (site.id === 'sweetwater-1-300mw') {
-      return selectedScenario === '2026-h18-sw1';
-    }
-    if (site.id === 'sweetwater-1-600mw') {
-      return selectedScenario === '2027-h110-colo';
-    }
-    if (site.id === 'sweetwater-1-1400mw') {
-      return selectedScenario === '2027-h110-hyperscaler';
-    }
-    if (site.id === 'sweetwater-1') {
-      return selectedScenario !== '2027-h110-hyperscaler' && selectedScenario !== '2026-h18-sw1' && selectedScenario !== '2027-h110-colo';
-    }
-    if (site.id === 'horizon-5-8') {
-      return selectedScenario === '2026-h18-sw1';
-    }
-    if (site.id === 'horizon-5-10') {
-      return selectedScenario === '2027-h110-colo' || selectedScenario === '2027-h110-hyperscaler';
-    }
-    if (site.id === 'oklahoma') {
-      return selectedScenario === '2027-h110-colo' || selectedScenario === '2027-h110-hyperscaler';
-    }
-    return true;
-  });
+  const activeSites = sites;
 
   // Calculate total annual revenue
   const totalAnnualRevenue = activeSites.reduce((sum, site) => {
@@ -786,6 +395,11 @@ function App() {
     const result = getSiteProfit(site);
     return sum + result.netProfit;
   }, 0);
+
+  // Calculate active site capacity
+  const totalActiveMW = activeSites.reduce((sum, site) => (
+    site.enabled ? sum + getSiteSizeMW(site) : sum
+  ), 0);
 
   // Calculate pre-tax net profits
   const preTaxNetProfits = totalNetProfit - (sgaExpense || 0);
@@ -804,10 +418,11 @@ function App() {
   // Calculate shares
   const fullyDilutedShares = useDirectSharesInput
     ? (directShares || 0)
-    : (currentShares || 0) * (1 + (dilutionPercentage || 0) / 100);
+    : (currentShares || 0);
 
   // Calculate share price
   const sharePrice = fullyDilutedShares > 0 ? marketCap / fullyDilutedShares : 0;
+  const selectedScenarioName = customScenarios.find(scenario => scenario.id === selectedScenario)?.name ?? selectedScenario;
 
   return (
     <div className="app">
@@ -816,81 +431,6 @@ function App() {
       </header>
 
       <div className="container">
-        {/* Final Results Section */}
-        <div className="results-card">
-          <h2>Valuation Summary</h2>
-          <div className="result-grid">
-            <div className="result-item">
-              <label>Share Price</label>
-              <div className="result-value highlight">${(Number(sharePrice) || 0).toFixed(2)}</div>
-            </div>
-            <div className="result-item">
-              <label>Market Cap</label>
-              <div className="result-value">{formatValue(marketCap)}</div>
-            </div>
-            <div className="result-item">
-              <label>Annual Revenue</label>
-              <div className="result-value">{formatValue(totalAnnualRevenue, '$', '/yr')}</div>
-            </div>
-            <div className="result-item">
-              <label>Earnings before Tax, SG&A</label>
-              <div className="result-value">{formatValue(totalNetProfit, '$', '/yr')}</div>
-            </div>
-          </div>
-
-          <div className="calc-steps">
-            <div className="calc-steps-section-header">Annual Revenue Split:</div>
-            {activeSites.filter(site => site.enabled).map(site => {
-              const result = getSiteProfit(site);
-              return (
-                <div key={site.id}>
-                  {site.name}: {formatValue(result.revenue)}/yr
-                </div>
-              );
-            })}
-            <div className="calc-steps-total">Total Annual Revenue = {formatValue(totalAnnualRevenue)}/yr</div>
-
-            <div className="calc-steps-section-header calc-steps-section-header-margin">Earnings before Tax, SG&A Split:</div>
-            {activeSites.filter(site => site.enabled).map(site => {
-              const result = getSiteProfit(site);
-              return (
-                <div key={site.id}>
-                  {site.name}: {formatValue(result.netProfit)}/yr
-                </div>
-              );
-            })}
-            <div className="calc-steps-total">Total Earnings before Tax, SG&A = {formatValue(totalNetProfit)}/yr</div>
-
-            <div className="calc-steps-section-header calc-steps-section-header-margin">Net Profit and Share Price Calculations:</div>
-            <div>Pre-tax Net Profits = Earnings before Tax, SG&A - SG&A = {formatValue(totalNetProfit)} - {formatValue(sgaExpense)} = {formatValue(preTaxNetProfits)}</div>
-            <div>Corporate Tax = Pre-tax Net Profits × Corporate Tax Rate = {formatValue(preTaxNetProfits)} × {corporateTaxRate}% = {formatValue(corporateTax)}</div>
-            <div>Tax Abatement and Tax Loss Realization = Corporate Tax × Tax Abatement and Tax Loss Realization Rate = {formatValue(corporateTax)} × {taxAbatementRate}% = {formatValue(taxAbatement)}</div>
-            <div>Taxes = Corporate Tax - Tax Abatement and Tax Loss Realization = {formatValue(corporateTax)} - {formatValue(taxAbatement)} = {formatValue(taxes)}</div>
-            <div>Net Profit = Pre-tax Net Profits - Taxes = {formatValue(preTaxNetProfits)} - {formatValue(taxes)} = {formatValue(netProfit)}</div>
-            <div>Market Cap = Net Profit × P/E Ratio = {formatValue(netProfit)} × {peRatio} = {formatValue(marketCap)}</div>
-            <div>Share Price = Market Cap / Fully Diluted Shares = {formatValue(marketCap)} / {formatShares(fullyDilutedShares)} = ${(Number(sharePrice) || 0).toFixed(2)}</div>
-          </div>
-        </div>
-
-        {/* Expand/Collapse All Buttons */}
-        <div className="accordion-controls">
-          <div className="control-btn-left">
-            <button onClick={expandAll} className="control-btn">Expand All</button>
-            <button onClick={collapseAll} className="control-btn">Collapse All</button>
-          </div>
-          <div className="control-btn-right">
-            <button onClick={downloadJSON} className="control-btn">Download Inputs</button>
-            <button onClick={() => document.getElementById('file-upload').click()} className="control-btn">Upload Inputs</button>
-            <input
-              id="file-upload"
-              type="file"
-              accept=".json"
-              onChange={uploadCSV}
-              className="hidden-file-input"
-            />
-          </div>
-        </div>
-
         {/* Scenarios */}
         <div className="accordion">
           <div className="accordion-header" onClick={() => setScenariosOpen(!scenariosOpen)}>
@@ -902,48 +442,51 @@ function App() {
             <div className="accordion-content">
               <div className="scenario-buttons-container">
             <button
-              onClick={() => loadScenario('canada')}
-              className={`scenario-btn ${selectedScenario === 'canada' ? 'selected' : ''}`}
+              onClick={() => loadScenario('2025')}
+              className={`scenario-btn ${selectedScenario === '2025' ? 'selected' : ''}`}
             >
               <div>
-                <div>Canada</div>
-                <div>&nbsp;</div>
+                <div>2025</div>
               </div>
             </button>
             <button
-              onClick={() => loadScenario('canada-h14')}
-              className={`scenario-btn ${selectedScenario === 'canada-h14' ? 'selected' : ''}`}
+              onClick={() => loadScenario('2026')}
+              className={`scenario-btn ${selectedScenario === '2026' ? 'selected' : ''}`}
             >
               <div>
-                <div>2025: Canada</div>
-                <div>+ H1-4</div>
+                <div>2026</div>
               </div>
             </button>
             <button
-              onClick={() => loadScenario('2026-h18-sw1')}
-              className={`scenario-btn ${selectedScenario === '2026-h18-sw1' ? 'selected' : ''}`}
+              onClick={() => loadScenario('2027')}
+              className={`scenario-btn ${selectedScenario === '2027' ? 'selected' : ''}`}
             >
               <div>
-                <div>Frans 2026: Canada + H1-8</div>
-                <div>+ SW1 200MW</div>
+                <div>2027</div>
               </div>
             </button>
             <button
-              onClick={() => loadScenario('2027-h110-colo')}
-              className={`scenario-btn ${selectedScenario === '2027-h110-colo' ? 'selected' : ''}`}
+              onClick={() => loadScenario('2028')}
+              className={`scenario-btn ${selectedScenario === '2028' ? 'selected' : ''}`}
             >
               <div>
-                <div>Jim 2027: Canada + H1-10</div>
-                <div>+ SW1 400MW + OK</div>
+                <div>2028</div>
               </div>
             </button>
             <button
-              onClick={() => loadScenario('2027-h110-hyperscaler')}
-              className={`scenario-btn ${selectedScenario === '2027-h110-hyperscaler' ? 'selected' : ''}`}
+              onClick={() => loadScenario('2029')}
+              className={`scenario-btn ${selectedScenario === '2029' ? 'selected' : ''}`}
             >
               <div>
-                <div>Dulce 2027: Canada + H1-10</div>
-                <div>+ SW1 + OK</div>
+                <div>2029</div>
+              </div>
+            </button>
+            <button
+              onClick={() => loadScenario('2030')}
+              className={`scenario-btn ${selectedScenario === '2030' ? 'selected' : ''}`}
+            >
+              <div>
+                <div>2030</div>
               </div>
             </button>
 
@@ -1027,6 +570,96 @@ function App() {
           </div>
         )}
 
+        {/* Final Results Section */}
+        <div className="results-card">
+          <h2>{selectedScenarioName} Valuation Summary</h2>
+          <div className="result-grid">
+            <div className="result-item">
+              <label>Share Price</label>
+              <div className="result-value highlight">${(Number(sharePrice) || 0).toFixed(2)}</div>
+            </div>
+            <div className="result-item">
+              <label>Market Cap</label>
+              <div className="result-value">{formatValue(marketCap)}</div>
+            </div>
+            <div className="result-item">
+              <label>Annual Revenue</label>
+              <div className="result-value">{formatValue(totalAnnualRevenue, '$', '/yr')}</div>
+            </div>
+            <div className="result-item">
+              <label>Earnings before Tax, SG&A</label>
+              <div className="result-value">{formatValue(totalNetProfit, '$', '/yr')}</div>
+            </div>
+            <div className="result-item">
+              <label>MWs Active</label>
+              <div className="result-value">{totalActiveMW.toLocaleString()}MW</div>
+            </div>
+          </div>
+
+          <div className="calc-steps">
+            <div className="calc-steps-section-header">Annual Revenue Split:</div>
+            {activeSites.filter(site => site.enabled).map(site => {
+              const result = getSiteProfit(site);
+              return (
+                <div key={site.id}>
+                  {site.name}: {formatValue(result.revenue)}/yr
+                </div>
+              );
+            })}
+            <div className="calc-steps-total">Total Annual Revenue = {formatValue(totalAnnualRevenue)}/yr</div>
+
+            <div className="calc-steps-section-header calc-steps-section-header-margin">Earnings before Tax, SG&A Split:</div>
+            {activeSites.filter(site => site.enabled).map(site => {
+              const result = getSiteProfit(site);
+              return (
+                <div key={site.id}>
+                  {site.name}: {formatValue(result.netProfit)}/yr
+                </div>
+              );
+            })}
+            <div className="calc-steps-total">Total Earnings before Tax, SG&A = {formatValue(totalNetProfit)}/yr</div>
+
+            <div className="calc-steps-section-header calc-steps-section-header-margin">Net Profit and Share Price Calculations:</div>
+            <div>Pre-tax Net Profits = Earnings before Tax, SG&A - SG&A = {formatValue(totalNetProfit)} - {formatValue(sgaExpense)} = {formatValue(preTaxNetProfits)}</div>
+            <div>Corporate Tax = Pre-tax Net Profits × Corporate Tax Rate = {formatValue(preTaxNetProfits)} × {corporateTaxRate}% = {formatValue(corporateTax)}</div>
+            <div>Tax Abatement and Tax Loss Realization = Corporate Tax × Tax Abatement and Tax Loss Realization Rate = {formatValue(corporateTax)} × {taxAbatementRate}% = {formatValue(taxAbatement)}</div>
+            <div>Taxes = Corporate Tax - Tax Abatement and Tax Loss Realization = {formatValue(corporateTax)} - {formatValue(taxAbatement)} = {formatValue(taxes)}</div>
+            <div>Net Profit = Pre-tax Net Profits - Taxes = {formatValue(preTaxNetProfits)} - {formatValue(taxes)} = {formatValue(netProfit)}</div>
+            <div>Market Cap = Net Profit × P/E Ratio = {formatValue(netProfit)} × {peRatio} = {formatValue(marketCap)}</div>
+            <div>Share Price = Market Cap / Fully Diluted Shares = {formatValue(marketCap)} / {formatShares(fullyDilutedShares)} = ${(Number(sharePrice) || 0).toFixed(2)}</div>
+          </div>
+        </div>
+
+        <ScenarioMetricChart
+          gpuPrices={gpuPrices}
+          gpuHourlyRates={gpuHourlyRates}
+          scenarioParameters={scenarioParameters}
+          corporateTaxRate={corporateTaxRate}
+          taxAbatementRate={taxAbatementRate}
+          sgaExpense={sgaExpense}
+          useDirectSharesInput={useDirectSharesInput}
+          directShares={directShares}
+        />
+
+        {/* Expand/Collapse All Buttons */}
+        <div className="accordion-controls">
+          <div className="control-btn-left">
+            <button onClick={expandAll} className="control-btn">Expand All</button>
+            <button onClick={collapseAll} className="control-btn">Collapse All</button>
+          </div>
+          <div className="control-btn-right">
+            <button onClick={downloadJSON} className="control-btn">Download Inputs</button>
+            <button onClick={() => document.getElementById('file-upload').click()} className="control-btn">Upload Inputs</button>
+            <input
+              id="file-upload"
+              type="file"
+              accept=".json"
+              onChange={uploadCSV}
+              className="hidden-file-input"
+            />
+          </div>
+        </div>
+
         {/* Share Calculation Inputs */}
         <div className="accordion">
           <div className="accordion-header" onClick={() => setShareParamsOpen(!shareParamsOpen)}>
@@ -1085,14 +718,13 @@ function App() {
                       checked={!useDirectSharesInput}
                       onChange={() => {
                         setUseDirectSharesInput(false);
-                        // Calculate dilution percentage from direct shares
-                        if (currentShares > 0) {
-                          const calculatedDilution = ((directShares / currentShares) - 1) * 100;
+                        if (BASE_2025_SHARES > 0) {
+                          const calculatedDilution = ((directShares / BASE_2025_SHARES) - 1) * 100;
                           updateDilutionPercentage(Math.max(0, calculatedDilution));
                         }
                       }}
                     />
-                    Calculate from Current Shares + Dilution
+                    Calculate from 2025 Shares + Dilution
                   </label>
                   <label>
                     <input
@@ -1100,9 +732,7 @@ function App() {
                       checked={useDirectSharesInput}
                       onChange={() => {
                         setUseDirectSharesInput(true);
-                        // Calculate direct shares from current shares and dilution
-                        const calculatedShares = currentShares * (1 + dilutionPercentage / 100);
-                        setDirectShares(calculatedShares);
+                        setDirectShares(currentShares);
                       }}
                     />
                     Direct Input
@@ -1113,15 +743,6 @@ function App() {
               {!useDirectSharesInput ? (
                 <>
                   <div className="input-row">
-                    <label>Current Shares (millions)</label>
-                    <input
-                      type="number"
-                      value={currentShares}
-                      onChange={(e) => updateCurrentShares(e.target.value === '' ? '' : parseFloat(e.target.value))}
-                      onBlur={(e) => updateCurrentShares(e.target.value === '' ? 0 : parseFloat(e.target.value) || 0)}
-                    />
-                  </div>
-                  <div className="input-row">
                     <label>Dilution Percentage (%)</label>
                     <input
                       type="number"
@@ -1131,7 +752,7 @@ function App() {
                     />
                   </div>
                   <div className="calc-steps">
-                    <div>Fully Diluted Shares = {currentShares}M × (1 + {dilutionPercentage}%) = {fullyDilutedShares.toFixed(1)}M</div>
+                    <div>Fully Diluted Shares = {BASE_2025_SHARES}M × (1 + {dilutionPercentage}%) = {fullyDilutedShares.toFixed(1)}M</div>
                   </div>
                 </>
               ) : (

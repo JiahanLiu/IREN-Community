@@ -2,7 +2,7 @@
  * Financial calculation utilities for the IREN Community Financials app
  */
 
-import { NEBIUS_BASE_REVENUE, HOURS_PER_YEAR, MONTHS_PER_YEAR } from '../constants/defaults';
+import { HOURS_PER_YEAR, MONTHS_PER_YEAR } from '../constants/defaults';
 
 /**
  * Calculate net profit for a Colocation site
@@ -140,13 +140,13 @@ export const calculateHyperscalerProfit = (data, gpuPrices, gpuHourlyRates) => {
     const hyperscaleCount = data.directGpuCount || 0;
     const veraRubinCount = data.veraRubinGpuCount || 0;
     const hyperscaleCost = hyperscaleCount * gpuPrices.hyperscaleBulkGB300 / 1000000;
-    const veraRubinCost = veraRubinCount * gpuPrices.veraRubinNVL144 / 1000000;
+    const veraRubinCost = veraRubinCount * gpuPrices.veraRubin / 1000000;
     totalHardwareCost = hyperscaleCost + veraRubinCost;
     if (hyperscaleCount > 0) {
-      steps.push(`Hyperscale Bulk GB300: ${hyperscaleCount.toLocaleString()} GPUs × $${gpuPrices.hyperscaleBulkGB300.toLocaleString()} = $${hyperscaleCost.toFixed(2)}M`);
+      steps.push(`Bulk GB300 - 2025 Pricing: ${hyperscaleCount.toLocaleString()} GPUs × $${gpuPrices.hyperscaleBulkGB300.toLocaleString()} = $${hyperscaleCost.toFixed(2)}M`);
     }
     if (veraRubinCount > 0) {
-      steps.push(`Hyperscale Bulk Vera Rubin NVL144: ${veraRubinCount.toLocaleString()} GPUs × $${gpuPrices.veraRubinNVL144.toLocaleString()} = $${veraRubinCost.toFixed(2)}M`);
+      steps.push(`Vera Rubin - 2026 Pricing: ${veraRubinCount.toLocaleString()} GPUs × $${gpuPrices.veraRubin.toLocaleString()} = $${veraRubinCost.toFixed(2)}M`);
     }
     steps.push(`Total Hardware Cost: $${totalHardwareCost.toFixed(2)}M`);
   }
@@ -198,72 +198,14 @@ export const calculateHyperscalerProfit = (data, gpuPrices, gpuHourlyRates) => {
   const residualValuePerYear = residualValue / data.contractYears;
   steps.push(`GPU Residual Value/yr: $${residualValue.toFixed(2)}M / ${data.contractYears} yrs = $${residualValuePerYear.toFixed(2)}M/yr`);
 
-  const baseNetProfit = ebitdaPerYear - gpuDepreciation - dcDepreciation - interestPerYear + residualValuePerYear;
-  steps.push(`Base Earnings before Tax, SG&A: $${ebitdaPerYear.toFixed(2)}M - $${gpuDepreciation.toFixed(2)}M - $${dcDepreciation.toFixed(2)}M - $${interestPerYear.toFixed(2)}M + $${residualValuePerYear.toFixed(2)}M = $${baseNetProfit.toFixed(2)}M/yr`);
-
-  let netProfit = baseNetProfit;
-  let totalRevenue = revenue; // Track total revenue (base + additional if applicable)
-  let additionalProfitPerYear = 0; // Track additional profit for payback calculation
-
-  // Improved Contract (only if enabled)
-  if (data.contractGapEnabled) {
-    steps.push(''); // Empty line for spacing
-    steps.push('--- Improved Contract ---');
-
-    // Get GPU count
-    const gpuCount = data.directGpuCount || 0;
-
-    let newRevenue;
-
-    // Check improvement mode (default is 'direct')
-    if (data.improvementMode === 'percentage') {
-      // Percentage of NBIS-MSFT mode
-      // Nebius Topline Scaled by GPU Count with hourly rate adjustment
-      const defaultHourlyRate = gpuHourlyRates.hyperscaleBulkGB300 /
-        (gpuHourlyRates.hyperscaleBulkGB300 > 0 ? 1 : Infinity); // Use current as reference
-      const currentHourlyRate = gpuHourlyRates.hyperscaleBulkGB300;
-      const hourlyRateRatio = defaultHourlyRate > 0 ? currentHourlyRate / defaultHourlyRate : 1;
-      const gpuCountProratedNebius = (gpuCount / 100000) * NEBIUS_BASE_REVENUE * hourlyRateRatio;
-      steps.push(`Nebius Topline Scaled by GPU Count: (${gpuCount} / 100k) × $${NEBIUS_BASE_REVENUE}M × ${hourlyRateRatio.toFixed(4)} = $${gpuCountProratedNebius.toFixed(2)}M`);
-
-      // Improved Contracts Percentage (user input)
-      const improvedPercentage = data.improvedContractsPercentage || 0;
-
-      // New Negotiated Topline
-      newRevenue = gpuCountProratedNebius * (improvedPercentage / 100);
-      steps.push(`New Negotiated Topline: $${gpuCountProratedNebius.toFixed(2)}M × ${improvedPercentage}% = $${newRevenue.toFixed(2)}M`);
-    } else {
-      // Improvement Percentage mode (default)
-      const improvementPercentage = data.directImprovement || 0;
-
-      // New Negotiated Topline based on Base Contract Revenue
-      newRevenue = revenue * (1 + improvementPercentage / 100);
-      steps.push(`New Negotiated Topline: $${revenue.toFixed(2)}M × (1 + ${improvementPercentage}%) = $${newRevenue.toFixed(2)}M`);
-    }
-
-    // Additional Profit (5yrs)
-    const additionalProfit5yrs = newRevenue - revenue;
-    steps.push(`Additional Profit (5yrs): New Negotiated Topline - Base Contract Revenue = $${newRevenue.toFixed(2)}M - $${revenue.toFixed(2)}M = $${additionalProfit5yrs.toFixed(2)}M`);
-
-    // Additional Profit (annual)
-    const additionalProfit = additionalProfit5yrs / 5;
-    additionalProfitPerYear = additionalProfit; // Store for payback calculation
-    steps.push(`Additional Profit: Additional Profit (5yrs) / 5 = $${additionalProfit5yrs.toFixed(2)}M / 5 = $${additionalProfit.toFixed(2)}M/yr`);
-
-    // Net Profit (Base Net Profit + Additional Profit)
-    netProfit = baseNetProfit + additionalProfit;
-    steps.push(`Earnings before Tax, SG&A: Base Earnings before Tax, SG&A + Additional Profit = $${baseNetProfit.toFixed(2)}M/yr + $${additionalProfit.toFixed(2)}M/yr = $${netProfit.toFixed(2)}M/yr`);
-
-    // Update total revenue to include additional profit
-    totalRevenue = revenue + additionalProfit5yrs;
-    steps.push(`Revenue: Base Contract Revenue + Additional Profit (5yrs) = $${revenue.toFixed(2)}M + $${additionalProfit5yrs.toFixed(2)}M = $${totalRevenue.toFixed(2)}M`);
-  }
+  const netProfit = ebitdaPerYear - gpuDepreciation - dcDepreciation - interestPerYear + residualValuePerYear;
+  steps.push(`Earnings before Tax, SG&A: $${ebitdaPerYear.toFixed(2)}M - $${gpuDepreciation.toFixed(2)}M - $${dcDepreciation.toFixed(2)}M - $${interestPerYear.toFixed(2)}M + $${residualValuePerYear.toFixed(2)}M = $${netProfit.toFixed(2)}M/yr`);
 
   // Calculate annual revenue (divide total contract revenue by contract years)
-  const annualRevenue = totalRevenue / (data.contractYears || 1);
+  const annualRevenue = revenue / (data.contractYears || 1);
 
   // Calculate Positive Cashflow Years (out of 20 years)
-  // Formula: (EBITDA * 4 - GPU Cost * 4 - DC Cost - Total Interest * 4 + Additional Profit * 4) / (EBITDA * 4 + Additional Profit * 4) * 20
+  // Formula: (EBITDA * 4 - GPU Cost * 4 - DC Cost - Total Interest * 4) / EBITDA * 4 * 20
   // Where: EBITDA is 5-year total, × 4 for 20-year projection
   // DC Cost has no multiplier (lasts 20 years)
   steps.push('\u00A0');
@@ -284,36 +226,19 @@ export const calculateHyperscalerProfit = (data, gpuPrices, gpuHourlyRates) => {
   const residualValue20yr = residualValue * 4;
   steps.push(`20-Year Residual Value: $${residualValue.toFixed(2)}M × 4 = $${residualValue20yr.toFixed(2)}M`);
 
-  // Calculate additional profit for 20 years (additionalProfit5yrs is already 5-year value)
-  const additionalProfit5yrs = additionalProfitPerYear * 5;
-  const additionalProfit20yr = additionalProfit5yrs * 4;
-  if (additionalProfit20yr > 0) {
-    steps.push(`20-Year Additional Profit: $${additionalProfit5yrs.toFixed(2)}M × 4 = $${additionalProfit20yr.toFixed(2)}M`);
-  }
-
-  const totalCashflow20yr = ebitda20yr - gpuCost20yr - dcCost - interest20yr + residualValue20yr + additionalProfit20yr;
-  const totalEbitda20yr = ebitda20yr + additionalProfit20yr;
-
-  if (additionalProfit20yr > 0) {
-    steps.push(`20-Year Net Cashflow: $${ebitda20yr.toFixed(2)}M - $${gpuCost20yr.toFixed(2)}M - $${dcCost.toFixed(2)}M - $${interest20yr.toFixed(2)}M + $${residualValue20yr.toFixed(2)}M + $${additionalProfit20yr.toFixed(2)}M = $${totalCashflow20yr.toFixed(2)}M`);
-    steps.push(`20-Year Total EBITDA: $${ebitda20yr.toFixed(2)}M + $${additionalProfit20yr.toFixed(2)}M = $${totalEbitda20yr.toFixed(2)}M`);
-  } else {
-    steps.push(`20-Year Net Cashflow: $${ebitda20yr.toFixed(2)}M - $${gpuCost20yr.toFixed(2)}M - $${dcCost.toFixed(2)}M - $${interest20yr.toFixed(2)}M + $${residualValue20yr.toFixed(2)}M = $${totalCashflow20yr.toFixed(2)}M`);
-  }
+  const totalCashflow20yr = ebitda20yr - gpuCost20yr - dcCost - interest20yr + residualValue20yr;
+  const totalEbitda20yr = ebitda20yr;
+  steps.push(`20-Year Net Cashflow: $${ebitda20yr.toFixed(2)}M - $${gpuCost20yr.toFixed(2)}M - $${dcCost.toFixed(2)}M - $${interest20yr.toFixed(2)}M + $${residualValue20yr.toFixed(2)}M = $${totalCashflow20yr.toFixed(2)}M`);
 
   const cashflowFraction = totalEbitda20yr > 0 ? totalCashflow20yr / totalEbitda20yr : 0;
   const paybackYears = cashflowFraction * 20;
   steps.push(`Positive Cashflow: ($${totalCashflow20yr.toFixed(2)}M / $${totalEbitda20yr.toFixed(2)}M) × 20 = ${paybackYears.toFixed(1)} out of 20 years`);
 
-  // Payback Period: (GPU Cost + DC Cost + Total Interest) / (EBITDA/yr + Additional Profit/yr)
+  // Payback Period: (GPU Cost + DC Cost + Total Interest) / EBITDA/yr
   const totalCosts = totalHardwareCost + dcCost + totalInterest;
-  const annualCashflow = ebitdaPerYear + additionalProfitPerYear;
+  const annualCashflow = ebitdaPerYear;
   const paybackPeriod = annualCashflow > 0 ? totalCosts / annualCashflow : Infinity;
-  if (additionalProfitPerYear > 0) {
-    steps.push(`Payback Period: ($${totalHardwareCost.toFixed(2)}M + $${dcCost.toFixed(2)}M + $${totalInterest.toFixed(2)}M) / ($${ebitdaPerYear.toFixed(2)}M/yr + $${additionalProfitPerYear.toFixed(2)}M/yr) = ${paybackPeriod.toFixed(1)} years`);
-  } else {
-    steps.push(`Payback Period: ($${totalHardwareCost.toFixed(2)}M + $${dcCost.toFixed(2)}M + $${totalInterest.toFixed(2)}M) / $${ebitdaPerYear.toFixed(2)}M/yr = ${paybackPeriod.toFixed(1)} years`);
-  }
+  steps.push(`Payback Period: ($${totalHardwareCost.toFixed(2)}M + $${dcCost.toFixed(2)}M + $${totalInterest.toFixed(2)}M) / $${ebitdaPerYear.toFixed(2)}M/yr = ${paybackPeriod.toFixed(1)} years`);
 
   return { netProfit, revenue: annualRevenue, steps, paybackYears, totalCashflow20yr, itLoad, paybackPeriod };
 };
@@ -335,12 +260,9 @@ export const calculateIRENCloudProfit = (data, gpuPrices) => {
 
   // GPU depreciation
   const gpus = data.gpus || {};
-  const calculatedGpuCost =
-    (gpus.b300 || 0) * gpuPrices.b300 / 1000000 +
-    (gpus.b200 || 0) * gpuPrices.b200 / 1000000 +
-    (gpus.mi350x || 0) * gpuPrices.mi350x / 1000000 +
-    (gpus.gb300 || 0) * gpuPrices.gb300 / 1000000 +
-    (gpus.hyperscaleBulkGB300 || 0) * gpuPrices.hyperscaleBulkGB300 / 1000000;
+  const calculatedGpuCost = Object.keys(gpuPrices).reduce((sum, gpuType) => (
+    sum + ((gpus[gpuType] || 0) * (gpuPrices[gpuType] || 0) / 1000000)
+  ), 0);
 
   // Apply paid off percentage: reduce cost by the paid off amount
   const gpuPaidOffPercent = data.gpuPaidOffPercent ?? 0;
@@ -435,15 +357,17 @@ export const calculateIRENCloudProfit = (data, gpuPrices) => {
   steps.push(`20-Year Residual Value: $${residualValue.toFixed(2)}M × 4 = $${residualValue20yr.toFixed(2)}M`);
 
   const totalCashflow20yr = ebitda20yr - gpuCost20yr - dcCost - interest20yr + residualValue20yr;
+  const totalEbitda20yr = ebitda20yr;
   steps.push(`20-Year Net Cashflow: $${ebitda20yr.toFixed(2)}M - $${gpuCost20yr.toFixed(2)}M - $${dcCost.toFixed(2)}M - $${interest20yr.toFixed(2)}M + $${residualValue20yr.toFixed(2)}M = $${totalCashflow20yr.toFixed(2)}M`);
 
-  const cashflowFraction = ebitda20yr > 0 ? totalCashflow20yr / ebitda20yr : 0;
+  const cashflowFraction = totalEbitda20yr > 0 ? totalCashflow20yr / totalEbitda20yr : 0;
   const paybackYears = cashflowFraction * 20;
-  steps.push(`Positive Cashflow: ($${totalCashflow20yr.toFixed(2)}M / $${ebitda20yr.toFixed(2)}M) × 20 = ${paybackYears.toFixed(1)} out of 20 years`);
+  steps.push(`Positive Cashflow: ($${totalCashflow20yr.toFixed(2)}M / $${totalEbitda20yr.toFixed(2)}M) × 20 = ${paybackYears.toFixed(1)} out of 20 years`);
 
   // Payback Period: (GPU Cost + DC Cost + Total Interest) / EBITDA
   const totalCosts = totalGpuCost + dcCost + totalInterest;
-  const paybackPeriod = ebitda > 0 ? totalCosts / ebitda : Infinity;
+  const annualCashflow = ebitda;
+  const paybackPeriod = annualCashflow > 0 ? totalCosts / annualCashflow : Infinity;
   steps.push(`Payback Period: ($${totalGpuCost.toFixed(2)}M + $${dcCost.toFixed(2)}M + $${totalInterest.toFixed(2)}M) / $${ebitda.toFixed(2)}M/yr = ${paybackPeriod.toFixed(1)} years`);
 
   return { netProfit, revenue, steps, paybackYears, totalCashflow20yr, itLoad, paybackPeriod };

@@ -109,20 +109,13 @@ function HyperscalerSite({ site, result, gpuPrices, gpuHourlyRates, updateSite, 
   };
 
   const handleNumberBlur = (field, value, defaultValue = 0) => {
-    let finalValue = value === '' ? defaultValue : parseFloat(value) || defaultValue;
-
-    // Enforce range for improvedContractsPercentage
-    if (field === 'improvedContractsPercentage' && finalValue !== 0) {
-      finalValue = Math.max(73.35, Math.min(100, finalValue));
-    }
-
-    update(field, finalValue);
+    update(field, value === '' ? defaultValue : parseFloat(value) || defaultValue);
   };
 
   const calculateContractRevenue = (hyperscaleCount, veraRubinCount, contractYears) => {
     const hoursPerYear = 24 * 365;
     const hyperscaleRevenue = (hyperscaleCount || 0) * gpuHourlyRates.hyperscaleBulkGB300 * contractYears * hoursPerYear;
-    const veraRubinRevenue = (veraRubinCount || 0) * (gpuHourlyRates.veraRubinNVL144 || 0) * contractYears * hoursPerYear;
+    const veraRubinRevenue = (veraRubinCount || 0) * (gpuHourlyRates.veraRubin || 0) * contractYears * hoursPerYear;
     const totalRevenue = hyperscaleRevenue + veraRubinRevenue;
     const roundedDollars = Math.round(totalRevenue);
     return roundedDollars / 1000000;
@@ -313,15 +306,16 @@ function HyperscalerSite({ site, result, gpuPrices, gpuHourlyRates, updateSite, 
             gpuValues={site.data.gpus}
             fieldMap={{
               'hyperscaleBulkGB300': 'directGpuCount',
-              'veraRubinNVL144': 'veraRubinGpuCount'
+              'veraRubin': 'veraRubinGpuCount'
             }}
             displayNames={{
-              'hyperscaleBulkGB300': 'Hyperscale Bulk GB300',
-              'veraRubinNVL144': 'Hyperscale Bulk Vera Rubin NVL144',
-              'gb300': 'GB300',
-              'b200': 'B200',
-              'b300': 'B300',
-              'mi350x': 'MI350X'
+              'gb300': 'GB300 - 2025 Pricing',
+              'b200': 'B200 - 2025 Pricing',
+              'b300': 'B300 - 2025 Pricing',
+              'b3002026': 'B300 - 2026 Pricing',
+              'mi350x': 'MI350X - 2025 Pricing',
+              'veraRubin': 'Vera Rubin - 2026 Pricing',
+              'hyperscaleBulkGB300': 'Bulk GB300 - 2025 Pricing'
             }}
             siteData={site.data}
             autoscaleGPUs={site.data.autoscaleGPUs}
@@ -338,6 +332,16 @@ function HyperscalerSite({ site, result, gpuPrices, gpuHourlyRates, updateSite, 
               value={site.data.contractYears}
               onChange={(e) => handleContractYearsChange(e.target.value)}
               onBlur={(e) => handleContractYearsBlur(e.target.value, 1)}
+            />
+          </div>
+
+          <div className="input-row">
+            <label>GPU Residual Value Percentage (%)</label>
+            <input
+              type="number"
+              value={site.data.residualValue ?? 0}
+              onChange={(e) => handleNumberChange('residualValue', e.target.value)}
+              onBlur={(e) => handleNumberBlur('residualValue', e.target.value, 0)}
             />
           </div>
 
@@ -462,93 +466,6 @@ function HyperscalerSite({ site, result, gpuPrices, gpuHourlyRates, updateSite, 
               onBlur={(e) => handleNumberBlur('debtYears', e.target.value, 1)}
             />
           </div>
-
-          <div className="input-row">
-            <label>GPU Residual Value Percentage (%)</label>
-            <input
-              type="number"
-              value={site.data.residualValue ?? 0}
-              onChange={(e) => handleNumberChange('residualValue', e.target.value)}
-              onBlur={(e) => handleNumberBlur('residualValue', e.target.value, 0)}
-            />
-          </div>
-
-          <div className="input-row">
-            <label>Improved Contract</label>
-            <div
-              className={`toggle-switch ${site.data.contractGapEnabled ? 'enabled' : ''}`}
-              onClick={(e) => { e.stopPropagation(); update('contractGapEnabled', !site.data.contractGapEnabled); }}
-            >
-              <span className="toggle-label">{site.data.contractGapEnabled ? 'Enabled' : 'Disabled'}</span>
-              <div className="toggle-slider"></div>
-            </div>
-          </div>
-
-          {site.data.contractGapEnabled && (
-            <>
-              <div className="input-row">
-                <label>Improvement Calculation Mode</label>
-                <div className="radio-group">
-                  <label>
-                    <input
-                      type="radio"
-                      checked={site.data.improvementMode === 'percentage'}
-                      onChange={() => update('improvementMode', 'percentage')}
-                    />
-                    Percentage of NBIS-MSFT
-                  </label>
-                  <label>
-                    <input
-                      type="radio"
-                      checked={site.data.improvementMode === 'direct' || !site.data.improvementMode}
-                      onChange={() => update('improvementMode', 'direct')}
-                    />
-                    Improvement Percentage
-                  </label>
-                </div>
-              </div>
-
-              {site.data.improvementMode === 'percentage' && (
-                <div className="input-row">
-                  <label>Improved Contract as a Percentage of NBIS-MSFT (%)</label>
-                  <div style={{ width: '100%' }}>
-                    <input
-                      type="number"
-                      min="73.35"
-                      max="100"
-                      step="0.01"
-                      style={{ width: '100%' }}
-                      value={site.data.improvedContractsPercentage ?? 0}
-                      onChange={(e) => handleNumberChange('improvedContractsPercentage', e.target.value)}
-                      onBlur={(e) => handleNumberBlur('improvedContractsPercentage', e.target.value, 0)}
-                    />
-                    <div style={{ fontSize: '0.875rem', color: '#6c757d', marginTop: '0.25rem', lineHeight: '1.4' }}>
-                      The first IREN-MSFT Contract's Revenue was ~73.35% of NBIS-MSFT Contract's Revenue. We expect subsequent contracts to be better than ~73.35% because IREN's credibility and/or uptime track record will enable them to negotiate a better topline. The total cost of GPUs, hardware, DC and all operation cost is reflected in the items subtracted from Base Revenue and any additional revenue is profit. This percentage should be between 73.35% and 100%.
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {(site.data.improvementMode === 'direct' || !site.data.improvementMode) && (
-                <div className="input-row">
-                  <label>Improvement Percentage (%)</label>
-                  <div style={{ width: '100%' }}>
-                    <input
-                      type="number"
-                      step="0.01"
-                      style={{ width: '100%' }}
-                      value={site.data.directImprovement ?? 0}
-                      onChange={(e) => handleNumberChange('directImprovement', e.target.value)}
-                      onBlur={(e) => handleNumberBlur('directImprovement', e.target.value, 0)}
-                    />
-                    <div style={{ fontSize: '0.875rem', color: '#6c757d', marginTop: '0.25rem', lineHeight: '1.4' }}>
-                      Enter the improvement percentage relative to base contract revenue.
-                    </div>
-                  </div>
-                </div>
-              )}
-            </>
-          )}
 
               </div>
             </div>

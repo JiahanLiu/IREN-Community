@@ -6,12 +6,17 @@ function GPUPrices({ prices, setPrices, hourlyRates, setHourlyRates, isOpen, set
   const [newGpuHourlyRate, setNewGpuHourlyRate] = useState('');
 
   // Define default GPU types that cannot be deleted
-  const defaultGpuTypes = ['b200', 'b300', 'gb300', 'mi350x', 'hyperscaleBulkGB300', 'veraRubinNVL144'];
+  const defaultGpuTypes = ['veraRubin', 'hyperscaleBulkGB300', 'gb300', 'b3002026', 'b300', 'b200', 'mi350x'];
 
   // Display name mapping for GPU types
   const displayNames = {
-    'hyperscaleBulkGB300': 'Hyperscale Bulk GB300',
-    'veraRubinNVL144': 'Hyperscale Bulk Vera Rubin NVL144'
+    'gb300': 'GB300 - 2025 Pricing',
+    'b200': 'B200 - 2025 Pricing',
+    'b300': 'B300 - 2025 Pricing',
+    'b3002026': 'B300 - 2026 Pricing',
+    'mi350x': 'MI350X - 2025 Pricing',
+    'veraRubin': 'Vera Rubin - 2026 Pricing',
+    'hyperscaleBulkGB300': 'Bulk GB300 - 2025 Pricing'
   };
 
   const updatePrice = (key, value) => {

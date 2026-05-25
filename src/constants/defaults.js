@@ -27,7 +27,7 @@ export const GPU_RATE_MULTIPLIERS = {
   b300: 3.85,
   gb300: 5.11,
   mi350x: 2.91,
-  veraRubinNVL144: 1.75, // Multiplier on top of hyperscaler base rate
+  veraRubin: 1.75, // Multiplier on top of hyperscaler base rate
 };
 
 // Calculate base hourly rates from constants
@@ -39,33 +39,40 @@ const HYPERSCALER_BASE_RATE = GPU_PRICING_BASE.HYPERSCALER_ANNUAL_REVENUE /
 
 // Default GPU hourly rates
 export const DEFAULT_GPU_HOURLY_RATES = {
-  b200: BASE_HOURLY_RATE * GPU_RATE_MULTIPLIERS.b200,
-  b300: BASE_HOURLY_RATE * GPU_RATE_MULTIPLIERS.b300,
-  gb300: BASE_HOURLY_RATE * GPU_RATE_MULTIPLIERS.gb300,
-  mi350x: BASE_HOURLY_RATE * GPU_RATE_MULTIPLIERS.mi350x,
+  veraRubin: 6.89953621879,
   hyperscaleBulkGB300: HYPERSCALER_BASE_RATE,
-  veraRubinNVL144: HYPERSCALER_BASE_RATE * GPU_RATE_MULTIPLIERS.veraRubinNVL144,
+  gb300: BASE_HOURLY_RATE * GPU_RATE_MULTIPLIERS.gb300,
+  b3002026: 4.02472946096,
+  b300: BASE_HOURLY_RATE * GPU_RATE_MULTIPLIERS.b300,
+  b200: BASE_HOURLY_RATE * GPU_RATE_MULTIPLIERS.b200,
+  mi350x: BASE_HOURLY_RATE * GPU_RATE_MULTIPLIERS.mi350x,
 };
 
 // Default GPU prices
 export const DEFAULT_GPU_PRICES = {
+  veraRubin: 120000,
   hyperscaleBulkGB300: 76315.78,
-  veraRubinNVL144: 76315.78 * 1.5,
   gb300: 80000,
-  b200: 45952.38,
+  b3002026: 70000,
   b300: 61117.21,
+  b200: 45952.38,
   mi350x: 42788.92,
 };
 
 // Default scenario configuration
-export const DEFAULT_SCENARIO = '2026-h18-sw1';
+export const DEFAULT_SCENARIO = '2027';
+export const BASE_2025_SHARES = 352.7;
+
+export const getCurrentSharesFromDilution = (dilutionPercentage) =>
+  BASE_2025_SHARES * (1 + (dilutionPercentage || 0) / 100);
 
 export const DEFAULT_SCENARIO_PARAMS = {
-  'canada': { peRatio: 50, dilutionPercentage: 0, currentShares: 352.7 },
-  'canada-h14': { peRatio: 50, dilutionPercentage: 0, currentShares: 352.7 },
-  '2027-h110-colo': { peRatio: 30, dilutionPercentage: 15, currentShares: 409.126 },
-  '2027-h110-hyperscaler': { peRatio: 30, dilutionPercentage: 60, currentShares: 409.126 },
-  '2026-h18-sw1': { peRatio: 40, dilutionPercentage: 15, currentShares: 409.126 }
+  '2025': { peRatio: 50, dilutionPercentage: 0 },
+  '2026': { peRatio: 40, dilutionPercentage: 10 },
+  '2027': { peRatio: 35, dilutionPercentage: 20 },
+  '2028': { peRatio: 30, dilutionPercentage: 30 },
+  '2029': { peRatio: 25, dilutionPercentage: 40 },
+  '2030': { peRatio: 20, dilutionPercentage: 40 }
 };
 
 // Time constants
